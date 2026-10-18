@@ -171,3 +171,30 @@ test('validateSlot accepts the first Monday slot after the DST change at +01:00'
   const now = new Date('2026-10-22T08:00:00Z');
   assert.deepEqual(validateSlot(now, '2026-10-26T09:00:00+01:00'), { ok: true });
 });
+
+test('generateSlots throws on an unreadable busy entry instead of offering the slot', () => {
+  const now = new Date('2026-10-01T08:00:00Z');
+  const bad = [
+    { start: 'garbage', end: '2026-10-05T11:15:00+02:00' },
+    { start: '2026-10-05T10:15:00+02:00' },
+    { start: '2026-10-05T10:15:00+02:00', end: null },
+    null,
+  ];
+  for (const entry of bad) {
+    assert.throws(() => generateSlots(now, [entry], {}), TypeError);
+  }
+});
+
+test('validateSlot rejects input without an explicit offset or of the wrong type with not_on_grid', () => {
+  const now = new Date('2026-10-17T10:00:00Z');
+  const notOnGrid = { ok: false, reason: 'not_on_grid' };
+  assert.deepEqual(validateSlot(now, '2026-10-20T14:00:00'), notOnGrid);
+  assert.deepEqual(validateSlot(now, '2026-10-20T14:00'), notOnGrid);
+  assert.deepEqual(validateSlot(now, '2026-10-20'), notOnGrid);
+  assert.deepEqual(validateSlot(now, null), notOnGrid);
+  assert.deepEqual(validateSlot(now, undefined), notOnGrid);
+  assert.deepEqual(validateSlot(now, 0), notOnGrid);
+  assert.deepEqual(validateSlot(now, new Date('2026-10-20T12:00:00Z')), notOnGrid);
+  assert.deepEqual(validateSlot(now, '2026-10-20T14:00:00+02:00'), { ok: true });
+  assert.deepEqual(validateSlot(now, '2026-10-20T12:00:00Z'), { ok: true });
+});

@@ -76,6 +76,19 @@ function dateKey(year, month, day) {
   return `${year}-${pad(month)}-${pad(day)}`;
 }
 
+// A busy block we cannot read must never make a slot look free, so fail loudly.
+function parseBusyRange(entry) {
+  const start = Date.parse(entry?.start);
+  const end = Date.parse(entry?.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    throw new TypeError(`Unreadable busy entry: ${JSON.stringify(entry)}`);
+  }
+  return { start, end };
+}
+
+// Time part must end in Z or an explicit offset; no host-zone guessing.
+const ISO_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i;
+
 /**
  * Free slots LAVA may offer, ascending, as ISO strings with the Amsterdam offset.
  * `bookedPerDay` is keyed by local date, 'YYYY-MM-DD'.
@@ -84,7 +97,7 @@ export function generateSlots(now, busy, bookedPerDay) {
   const rules = BOOKING_RULES;
   const earliest = now.getTime() + rules.minLeadHours * HOUR_MS;
   const latest = now.getTime() + rules.maxAheadDays * DAY_MS;
-  const busyRanges = busy.map((b) => ({ start: Date.parse(b.start), end: Date.parse(b.end) }));
+  const busyRanges = busy.map(parseBusyRange);
   const slotMs = rules.slotMinutes * MINUTE_MS;
   const slots = [];
 
@@ -122,6 +135,9 @@ export function generateSlots(now, busy, bookedPerDay) {
  */
 export function validateSlot(now, startIso) {
   const rules = BOOKING_RULES;
+  if (typeof startIso !== 'string' || !ISO_WITH_OFFSET.test(startIso)) {
+    return { ok: false, reason: 'not_on_grid' };
+  }
   const start = new Date(startIso);
   if (Number.isNaN(start.getTime())) return { ok: false, reason: 'not_on_grid' };
 
