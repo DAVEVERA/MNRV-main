@@ -50,6 +50,38 @@ test('buildIcs folds lines longer than 75 octets', () => {
   assert.ok(unfold(ics).includes(`SUMMARY:${'Ünïcödé '.repeat(30).trim()}`));
 });
 
+test('buildIcs folds a long Dutch title with an em dash without splitting a UTF-8 sequence', () => {
+  const title = 'LAVA intake — Mark de Wit '.repeat(5).trim();
+  const ics = buildIcs({ ...base, summary: title }, NOW);
+  const physical = ics.split('\r\n').filter(Boolean);
+  assert.ok(physical.some((l) => l.startsWith(' ')), 'expected folding');
+  // Work on bytes: a fatal decoder throws if a line cuts a multi-byte sequence.
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const byteLines = [];
+  let start = 0;
+  const bytes = Buffer.from(ics, 'utf8');
+  for (let i = 0; i < bytes.length - 1; i++) {
+    if (bytes[i] === 0x0d && bytes[i + 1] === 0x0a) {
+      byteLines.push(bytes.subarray(start, i));
+      start = i + 2;
+      i++;
+    }
+  }
+  for (const line of byteLines) {
+    assert.ok(line.length <= 75, 'line over 75 octets');
+    assert.ok(!decoder.decode(line).includes('�'));
+  }
+  assert.ok(unfold(ics).includes(`SUMMARY:${title}`));
+});
+
+for (const field of ['uid', 'organizerEmail', 'attendeeEmail']) {
+  test(`buildIcs throws when ${field} contains a line break`, () => {
+    for (const bad of ['a\r\nX-INJECT:1', 'a\nX-INJECT:1', 'a\rb']) {
+      assert.throws(() => buildIcs({ ...base, [field]: bad }, NOW), new RegExp(field));
+    }
+  });
+}
+
 test('buildIcs escapes commas, semicolons and newlines in SUMMARY and DESCRIPTION', () => {
   const ics = buildIcs(
     { ...base, summary: 'a, b; c\\d', description: 'regel een\nregel twee, met; tekens' },

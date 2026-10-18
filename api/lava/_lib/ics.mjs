@@ -43,6 +43,10 @@ function fold(line) {
 
 export function buildIcs(appointment, now = new Date()) {
   const { uid, startIso, endIso, summary, description, organizerEmail, attendeeEmail, meetUrl } = appointment;
+  // These are written raw, so a line break would inject extra properties.
+  for (const [name, value] of Object.entries({ uid, organizerEmail, attendeeEmail })) {
+    if (/[\r\n]/.test(value)) throw new Error(`${name} must not contain a line break`);
+  }
   const fullDescription = meetUrl ? `${description}\n\nGoogle Meet: ${meetUrl}` : description;
 
   const lines = [
