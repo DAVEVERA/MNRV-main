@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Win95 Media Player for React — Interactive Demo</title>
+    <meta name="description" content="Explore an interactive Windows 95-inspired media player demo for React, including fullscreen video and mobile media controls.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:creator" content="@benwiley4000">
+    <meta property="og:url" content="https://benwiley4000.github.io/win95-media-player">
+    <meta property="og:title" content="Win95 Media Player">
+    <meta property="og:description" content="It's back from 1995.. and running on your website!">
+    <meta property="og:image" content="https://benwiley4000.github.io/win95-media-player/banner.png">
+    <link rel="stylesheet" href="https://unpkg.com/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+    <style>
+      @font-face {
+        font-family: 'MS Sans Serif';
+        src: url(./ms-sans-serif.ttf);
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'MS Sans Serif', sans-serif;
+        background-image: url(./setup.png);
+        color: white;
+      }
+      main,
+      footer {
+        padding: 2rem;
+        margin: 0 auto;
+        max-width: 900px;
+      }
+      a {
+        color: white;
+        text-decoration: underline;
+      }
+      a:hover {
+        background: white;
+        color: black;
+      }
+      a:active {
+        background: black;
+        color: white;
+      }
+      pre {
+        color: white;
+        background: rgba(0, 0, 0, 0.55);
+        white-space: pre-wrap;
+      }
+      .header {
+        display: flex;
+        align-items: flex-end;
+        font-size: 3rem;
+        margin-bottom: 2rem;
+      }
+      .header img {
+        margin-right: 1rem;
+        width: auto;
+        height: 120px;
+      }
+      .powered-by {
+        margin: 0 0 0.5rem;
+        font-size: 1.5rem;
+        font-weight: 500;
+        line-height: 1.2;
+      }
+      .section-heading {
+        font-size: 1.75rem;
+      }
+      @media only screen and (max-width: 590px) {
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .header img {
+          margin-bottom: 1rem;
+          height: initial;
+          width: 250px;
+        }
+      }
+      .install {
+        font-size: 2rem;
+        padding: 1rem;
+        display: inline-block;
+      }
+      .players-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        flex-wrap: wrap;
+      }
+      .players-container .player {
+        width: 350px;
+        max-width: calc(100vw - 50px);
+        margin: 1rem;
+      }
+      .mobile-preview-grid {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .mobile-preview-image {
+        width: 400px;
+        height: auto;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="header">
+        <img alt="Windows 95 logo" src="./windows.png" width="1024" height="888">
+        <div>
+          <h1>
+            <strong>Win95</strong>&nbsp;Media Player
+          </h1>
+          <p class="powered-by">
+            powered by
+            <a href="https://github.com/benwiley4000/cassette">Cassette</a> and
+            <a href="https://github.com/arturbien/React95">React95</a>
+          </p>
+        </div>
+      </div>
+      <h2 class="section-heading">It's back from 1995.. and running on your website!</h2>
+      <pre class="install">npm install win95-media-player</pre>
+      <h2 class="section-heading">Try it out now!</h2>
+      <div id="app"></div>
+      <br>
+      <h2 class="section-heading">Maximize your window for an immersive Win95 experience:</h2>
+      <div>
+        <img alt="Win95 Media Player going fullscreen" src="../public/fullscreen.png" width="900" height="389">
+      </div>
+      <br>
+      <h2 class="section-heading">It also does modern stuff it shouldn't... like integrate with your mobile OS!</h2>
+      <div class="mobile-preview-grid">
+        <div>
+          <img class="mobile-preview-image" alt="Win95 Media Player controls on a mobile lock screen" src="../public/lockscreen.jpg" width="800" height="1422">
+        </div>
+        <div>
+          <img class="mobile-preview-image" alt="Win95 Media Player controls in the mobile media overlay" src="../public/overlay.jpg" width="900" height="1600">
+        </div>
+      </div>
+      <br>
+      <h2 class="section-heading">It's easy to add to your React app:</h2>
+      <div id="example-code-display"></div>
+      <script id="example-code" type="text/jsx-example">
+        <!-- HTML -->
+        <style>
+          .player {
+            width: 350px;
+          }
+        </style>
+        <div id="app"></div>
+
+
+        // JavaScript
+        import React from 'react';
+        import ReactDOM from 'react-dom';
+
+        import { MediaPlayer } from 'win95-media-player';
+
+        const playlist = [
+          {
+            url: 'https://archive.org/download/CC1301_windows_95/CC1301_windows_95_512kb.mp4',
+            title: 'Computer Chronicles - Windows 95'
+          }
+        ];
+
+        ReactDOM.render(
+          <MediaPlayer
+            className="player"
+            playlist={playlist}
+            showVideo
+            fullscreenEnabled
+          />,
+          document.getElementById('app')
+        );
+      </script>
+      <br>
+      <h2 class="section-heading">
+        For more, visit
+        <a href="https://github.com/benwiley4000/win95-media-player">GitHub</a>.
+      </h2>
+    </main>
+    <footer>
+      Created by <a href="https://benwiley.org">Ben Wiley</a>. Not produced
+      or endorsed by Microsoft.
+      <br>
+      This project is
+      <a href="https://github.com/benwiley4000/win95-media-player">
+        open source</a>
+      and available under the MIT license.
+    </footer>
+    <script src="index.js"></script>
+  </body>
+</html>
