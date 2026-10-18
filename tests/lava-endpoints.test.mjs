@@ -306,3 +306,65 @@ test('insertEvent throws on a non-200 response and on a response without an id',
     await assert.rejects(insertEvent({ ...EVENT, withMeet: false }, noId.fetchImpl), { name: 'GoogleApiError' });
   });
 });
+
+test('insertEvent still books the event when Google refuses the conference (400 naming conferenceData)', async () => {
+  await withEnv({}, async () => {
+    const warn = console.warn;
+    const warnings = [];
+    console.warn = (m) => warnings.push(m);
+    try {
+      const s = stub((call) =>
+        JSON.parse(call.body).conferenceData
+          ? json({ error: { code: 400, message: 'Invalid conference type value.' } }, 400)
+          : json({ id: 'evt-nomeet', htmlLink: 'https://calendar.google.com/e/nomeet' }),
+      );
+      const result = await insertEvent({ ...EVENT, withMeet: true }, s.fetchImpl);
+
+      const inserts = s.api();
+      assert.equal(inserts.length, 2);
+      const retry = JSON.parse(inserts[1].body);
+      assert.equal('conferenceData' in retry, false);
+      assert.equal('attendees' in retry, false);
+      assert.equal(new URL(inserts[1].url).searchParams.has('conferenceDataVersion'), false);
+      assert.equal(result.id, 'evt-nomeet');
+      assert.equal('meetUrl' in result, false);
+      assert.match(result.meetWarning, /Invalid conference type/);
+      assert.equal(warnings.length, 1);
+    } finally {
+      console.warn = warn;
+    }
+  });
+});
+
+test('insertEvent returns no meetUrl when the event is created but the conference failed', async () => {
+  await withEnv({}, async () => {
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      const s = stub(() =>
+        json({
+          id: 'evt-failed',
+          htmlLink: 'l',
+          conferenceData: { createRequest: { status: { statusCode: 'failure' } } },
+        }),
+      );
+      const result = await insertEvent({ ...EVENT, withMeet: true }, s.fetchImpl);
+      assert.equal(s.api().length, 1);
+      assert.equal(result.id, 'evt-failed');
+      assert.equal('meetUrl' in result, false);
+      assert.match(result.meetWarning, /failure/);
+    } finally {
+      console.warn = warn;
+    }
+  });
+});
+
+test('insertEvent does not degrade on non-conference failures when withMeet is true', async () => {
+  await withEnv({}, async () => {
+    for (const [status, message] of [[500, 'backend error'], [403, 'forbidden'], [400, 'Invalid start time']]) {
+      const s = stub(() => json({ error: { message } }, status));
+      await assert.rejects(insertEvent({ ...EVENT, withMeet: true }, s.fetchImpl), { name: 'GoogleApiError' });
+      assert.equal(s.api().length, 1);
+    }
+  });
+});

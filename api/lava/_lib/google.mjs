@@ -181,24 +181,48 @@ export async function insertEvent(event, fetchImpl = fetch) {
     start: { dateTime: startIso, timeZone: TIME_ZONE },
     end: { dateTime: endIso, timeZone: TIME_ZONE },
   };
-  if (withMeet) {
-    resource.conferenceData = {
-      createRequest: { requestId: randomUUID(), conferenceSolutionKey: { type: 'hangoutsMeet' } },
-    };
-  }
+  const insert = (res, withConference) =>
+    authorizedFetch(
+      `${API}/calendars/${encodeURIComponent(calendarId())}/events${withConference ? '?conferenceDataVersion=1' : ''}`,
+      { method: 'POST', body: JSON.stringify(res) },
+      'Google events.insert request',
+      fetchImpl,
+    );
 
-  const query = withMeet ? '?conferenceDataVersion=1' : '';
-  const body = await authorizedFetch(
-    `${API}/calendars/${encodeURIComponent(calendarId())}/events${query}`,
-    { method: 'POST', body: JSON.stringify(resource) },
-    'Google events.insert request',
-    fetchImpl,
-  );
+  let body;
+  let meetWarning;
+  if (withMeet) {
+    const withConference = {
+      ...resource,
+      conferenceData: {
+        createRequest: { requestId: randomUUID(), conferenceSolutionKey: { type: 'hangoutsMeet' } },
+      },
+    };
+    try {
+      body = await insert(withConference, true);
+    } catch (err) {
+      // Only a rejection that names the conference degrades. Auth, 5xx and the
+      // rest keep throwing: the Meet link is a convenience, the booking is not.
+      if (!(err instanceof GoogleApiError && err.status === 400 && /conference/i.test(err.message))) throw err;
+      meetWarning = `Meet link refused, event booked without it: ${err.message}`;
+    }
+  }
+  if (!body) body = await insert(resource, false);
   if (typeof body.id !== 'string' || !body.id) throw new GoogleApiError('Google events.insert returned no event id');
 
   const result = { id: body.id, htmlLink: body.htmlLink };
   const meetUrl =
     body.hangoutLink ?? body.conferenceData?.entryPoints?.find((p) => p.entryPointType === 'video')?.uri;
-  if (meetUrl) result.meetUrl = meetUrl;
+  if (meetUrl) {
+    result.meetUrl = meetUrl;
+  } else if (withMeet && !meetWarning) {
+    // Event created, but Google reported a failed or still-pending conference.
+    const status = body.conferenceData?.createRequest?.status?.statusCode ?? 'missing';
+    meetWarning = `Event booked without a Meet link (conference status: ${status})`;
+  }
+  if (meetWarning) {
+    result.meetWarning = meetWarning;
+    console.warn(`[lava/google] ${meetWarning}`);
+  }
   return result;
 }
