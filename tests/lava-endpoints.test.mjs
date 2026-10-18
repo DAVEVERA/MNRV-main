@@ -1,7 +1,9 @@
 // --- google.mjs (Task 4) ---
 import assert from 'node:assert/strict';
-import { createVerify, generateKeyPairSync } from 'node:crypto';
+import { createHash, createVerify, generateKeyPairSync } from 'node:crypto';
 import test from 'node:test';
+
+import sessionHandler from '../api/lava/session.mjs';
 
 import {
   countLavaEventsPerDay,
@@ -22,6 +24,13 @@ const ENV_KEYS = [
   'GOOGLE_PRIVATE_KEY',
   'GOOGLE_CALENDAR_ID',
   'GOOGLE_IMPERSONATE_SUBJECT',
+  'ELEVENLABS_API_KEY',
+  'LAVA_AGENT_ID',
+  'LAVA_DAILY_LIMIT',
+  'LAVA_TOOL_SECRET',
+  'TURNSTILE_SECRET_KEY',
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
 ];
 
 // Runs fn with a controlled Google environment, then restores the previous one.
@@ -430,5 +439,220 @@ test('countLavaEventsPerDay keys are YYYY-MM-DD in Amsterdam time, including aro
     );
     const counts = await countLavaEventsPerDay('2026-01-01T00:00:00Z', '2026-04-01T00:00:00Z', s.fetchImpl);
     assert.deepEqual(counts, { '2026-03-29': 1, '2026-01-05': 1 });
+  });
+});
+
+// --- session.mjs (Task 6) ---
+// Requests are hand-made: { method, headers, body } with `body` already parsed
+// (what Vercel's Node runtime provides for JSON). The handler also reads the
+// raw stream when `body` is absent. `res` is a recorder with the Node surface
+// the handler uses. global fetch is replaced for the duration of one test.
+
+const SESSION_ENV = {
+  ELEVENLABS_API_KEY: 'xi-secret-key-123',
+  LAVA_AGENT_ID: 'agent_abc',
+  LAVA_TOOL_SECRET: 'tool-secret',
+  TURNSTILE_SECRET_KEY: 'ts-secret',
+  SUPABASE_URL: 'https://db.example.co',
+  SUPABASE_SERVICE_ROLE_KEY: 'srv-key',
+};
+
+function fakeReq({ method = 'POST', body = { turnstileToken: 'cf-ok' }, headers = {} } = {}) {
+  return { method, body, headers: { 'x-forwarded-for': '203.0.113.9, 10.0.0.1', ...headers } };
+}
+
+function fakeRes() {
+  const res = {
+    statusCode: 200,
+    headers: {},
+    body: '',
+    setHeader(k, v) {
+      res.headers[k.toLowerCase()] = v;
+    },
+    end(chunk = '') {
+      res.body += chunk;
+    },
+  };
+  return res;
+}
+
+// Routes by host so a test can see exactly which upstreams were called, in order.
+async function runSession({ req = fakeReq(), turnstileOk = true, count = 0, mint, record } = {}) {
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    calls.push({ url: u, init });
+    if (u.includes('challenges.cloudflare.com')) return json({ success: turnstileOk });
+    if (u.includes('db.example.co') && init.method === 'HEAD') {
+      if (count instanceof Error) throw count;
+      return new Response(null, { status: 200, headers: { 'content-range': `*/${count}` } });
+    }
+    if (u.includes('db.example.co')) {
+      if (record) return record(u, init);
+      return new Response(null, { status: 201 });
+    }
+    if (u.includes('api.elevenlabs.io')) {
+      return mint ? mint(u, init) : json({ token: 'conv-token-1' });
+    }
+    throw new Error(`unexpected fetch ${u}`);
+  };
+  const res = fakeRes();
+  try {
+    await sessionHandler(req, res);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  return { res, calls, json: res.body ? JSON.parse(res.body) : undefined };
+}
+
+const hitsEleven = (calls) => calls.some((c) => c.url.includes('api.elevenlabs.io'));
+const grantPosts = (calls) =>
+  calls.filter((c) => c.init.method === 'POST' && c.url.includes('db.example.co'));
+const sha = (ip) => createHash('sha256').update(ip + 'tool-secret').digest('hex');
+
+test('session rejects a non-POST method with 405 and calls nothing', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession({ req: fakeReq({ method: 'GET' }) });
+    assert.equal(r.res.statusCode, 405);
+    assert.equal(r.res.headers.allow, 'POST');
+    assert.equal(r.calls.length, 0);
+  });
+});
+
+test('session returns 403 bot_check_failed when Turnstile fails, before any other call', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession({ turnstileOk: false });
+    assert.equal(r.res.statusCode, 403);
+    assert.deepEqual(r.json, { error: 'bot_check_failed' });
+    assert.equal(r.calls.length, 1);
+    assert.match(r.calls[0].url, /challenges\.cloudflare\.com/);
+  });
+});
+
+test('session returns 403 when the body has no turnstileToken', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession({ req: fakeReq({ body: {} }) });
+    assert.equal(r.res.statusCode, 403);
+    assert.equal(r.calls.length, 0);
+  });
+});
+
+test('session reads and parses the body from the stream when req.body is absent', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const { Readable } = await import('node:stream');
+    const req = Readable.from([Buffer.from(JSON.stringify({ turnstileToken: 'cf-stream' }))]);
+    req.method = 'POST';
+    req.headers = {};
+    const r = await runSession({ req });
+    assert.equal(r.res.statusCode, 200);
+    assert.equal(new URLSearchParams(r.calls[0].init.body).get('response'), 'cf-stream');
+  });
+});
+
+test('session returns 429 daily_limit_reached when 20 grants exist, and 19 still passes', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const full = await runSession({ count: 20 });
+    assert.equal(full.res.statusCode, 429);
+    assert.deepEqual(full.json, { error: 'daily_limit_reached' });
+    assert.equal((await runSession({ count: 19 })).res.statusCode, 200);
+  });
+});
+
+test('session honours LAVA_DAILY_LIMIT', async () => {
+  await withEnv({ ...SESSION_ENV, LAVA_DAILY_LIMIT: '3' }, async () => {
+    assert.equal((await runSession({ count: 3 })).res.statusCode, 429);
+    assert.equal((await runSession({ count: 2 })).res.statusCode, 200);
+  });
+});
+
+test('session returns 429 before calling ElevenLabs and records nothing', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession({ count: 20 });
+    assert.equal(hitsEleven(r.calls), false);
+    assert.equal(grantPosts(r.calls).length, 0);
+  });
+});
+
+test('session fails closed when the quota count is unavailable', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession({ count: new Error('supabase down') });
+    assert.equal(r.res.statusCode, 503);
+    assert.deepEqual(r.json, { error: 'service_unavailable' });
+    assert.equal(hitsEleven(r.calls), false);
+  });
+  await withEnv({ ...SESSION_ENV, SUPABASE_URL: undefined }, async () => {
+    const r = await runSession();
+    assert.equal(r.res.statusCode, 503);
+    assert.equal(hitsEleven(r.calls), false);
+  });
+});
+
+test('session mints a token from /v1/convai/conversation/token with the api key in the header', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession();
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { token: 'conv-token-1', agentId: 'agent_abc' });
+    const call = r.calls.find((c) => c.url.includes('api.elevenlabs.io'));
+    assert.equal(
+      call.url,
+      'https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=agent_abc',
+    );
+    assert.equal(call.init.method, 'GET');
+    assert.equal(call.init.headers['xi-api-key'], 'xi-secret-key-123');
+    const order = r.calls.map((c) =>
+      c.url.includes('cloudflare') ? 'turnstile' : c.url.includes('elevenlabs') ? 'mint' : c.init.method,
+    );
+    assert.deepEqual(order, ['turnstile', 'HEAD', 'mint', 'POST']);
+  });
+});
+
+test('session never puts ELEVENLABS_API_KEY in the response, even when ElevenLabs fails', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const ok = await runSession();
+    assert.ok(!ok.res.body.includes('xi-secret-key-123'));
+    assert.ok(!JSON.stringify(ok.res.headers).includes('xi-secret-key-123'));
+
+    // An upstream that echoes the key back must not leak through either.
+    const bad = await runSession({
+      mint: (u, init) => json({ detail: `bad key ${init.headers['xi-api-key']}` }, 401),
+    });
+    assert.equal(bad.res.statusCode, 502);
+    assert.deepEqual(bad.json, { error: 'token_unavailable' });
+    assert.ok(!bad.res.body.includes('xi-secret-key-123'));
+  });
+});
+
+test('session returns 502 and records nothing when ElevenLabs gives no token', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession({ mint: () => json({}) });
+    assert.equal(r.res.statusCode, 502);
+    assert.equal(grantPosts(r.calls).length, 0);
+  });
+});
+
+test('session records a grant with a salted sha256 ip hash, not the raw ip', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession();
+    const [post] = grantPosts(r.calls);
+    assert.ok(!post.init.body.includes('203.0.113.9'));
+    assert.equal(JSON.parse(post.init.body).ip_hash, sha('203.0.113.9'));
+  });
+});
+
+test('session falls back to x-real-ip and passes the same address to Turnstile', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const req = fakeReq({ headers: { 'x-forwarded-for': undefined, 'x-real-ip': '198.51.100.4' } });
+    const r = await runSession({ req });
+    assert.equal(JSON.parse(grantPosts(r.calls)[0].init.body).ip_hash, sha('198.51.100.4'));
+    assert.equal(new URLSearchParams(r.calls[0].init.body).get('remoteip'), '198.51.100.4');
+  });
+});
+
+test('session still hands out the token when recording the grant fails', async () => {
+  await withEnv(SESSION_ENV, async () => {
+    const r = await runSession({ record: () => new Response(null, { status: 500 }) });
+    assert.equal(r.res.statusCode, 200);
+    assert.equal(r.json.token, 'conv-token-1');
   });
 });
