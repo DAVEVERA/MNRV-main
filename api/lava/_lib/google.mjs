@@ -178,10 +178,11 @@ function isConferenceFailure(err) {
 }
 
 export async function insertEvent(event, fetchImpl = fetch) {
-  const { startIso, endIso, summary, description, withMeet } = event;
+  const { id, startIso, endIso, summary, description, withMeet } = event;
   // Deliberately no `attendees`: the visitor's only invitation is the ICS email,
   // and a Google attendee would trigger a second one.
   const resource = {
+    ...(id ? { id } : {}),
     summary,
     description,
     start: { dateTime: startIso, timeZone: TIME_ZONE },

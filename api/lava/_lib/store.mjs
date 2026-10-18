@@ -1,4 +1,5 @@
-// Session grants and report claims, kept in Supabase over its REST endpoint.
+// Session grants, booking-slot locks and report claims, kept in Supabase over
+// its REST endpoint.
 // No SDK: the project has no build step. Every failure throws, because a silent
 // default here would mean "nobody has used their quota" or "report not yet sent".
 
@@ -80,5 +81,29 @@ export async function claimReport(conversationId, clientImpl) {
   });
   if (res.status === 409) return false;
   if (!res.ok) throw new Error(`Claiming the report failed with status ${res.status}`);
+  return true;
+}
+
+/**
+ * Atomically reserves one calendar instant. The primary key is the lock, so
+ * callers in different Vercel instances cannot both win. The table contains no
+ * visitor or conversation data.
+ */
+export async function claimBookingSlot(startIso, claimToken, clientImpl) {
+  const startMs = typeof startIso === 'string' ? Date.parse(startIso) : NaN;
+  if (!Number.isFinite(startMs)) throw new TypeError('claimBookingSlot needs a valid slot start');
+  if (typeof claimToken !== 'string' || claimToken === '') {
+    throw new TypeError('claimBookingSlot needs a claim token');
+  }
+  const res = await clientImpl.request('/rest/v1/lava_booking_slots', {
+    method: 'POST',
+    headers: { prefer: 'return=minimal' },
+    body: JSON.stringify({
+      slot_start: new Date(startMs).toISOString(),
+      claim_token: claimToken,
+    }),
+  });
+  if (res.status === 409) return false;
+  if (!res.ok) throw new Error(`Claiming the booking slot failed with status ${res.status}`);
   return true;
 }

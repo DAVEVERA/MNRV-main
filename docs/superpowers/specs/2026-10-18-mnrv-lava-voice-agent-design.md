@@ -58,6 +58,8 @@ voor aanvraag het is, zodat Dave kan beoordelen wat hij ermee doet.
   ongemoeid en wordt niet aan LAVA gekoppeld.
 - Geen vervanging van het intakeformulier. Dat blijft bestaan als uitweg.
 - Geen opslag van gesprekken in een eigen database.
+- Supabase bewaart alleen technische beveiligingsstatus: sessietellingen,
+  tijdslotclaims zonder bezoekergegevens en de idempotency-claim van een verslag.
 
 ### Anti-goals — hiermee is het mislukt, ook als het technisch werkt
 

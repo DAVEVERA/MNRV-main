@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { localDateKey } from '../api/lava/_lib/rules.mjs';
 import {
+  claimBookingSlot,
   claimReport,
   countSessionsToday,
   createStoreClient,
@@ -113,4 +114,29 @@ test('claimReport throws on any other failure instead of claiming or refusing', 
   const { client } = fakeClient(() => new Response('nope', { status: 500 }));
   await assert.rejects(claimReport('conv_1', client), /500/);
   await assert.rejects(claimReport('', client), /conversation/i);
+});
+
+test('claimBookingSlot atomically grants one caller per canonical start instant', async () => {
+  const claimed = new Set();
+  const { client, calls } = fakeClient((call) => {
+    const body = JSON.parse(call.init.body);
+    if (claimed.has(body.slot_start)) return new Response('{"code":"23505"}', { status: 409 });
+    claimed.add(body.slot_start);
+    return new Response(null, { status: 201 });
+  });
+
+  assert.equal(await claimBookingSlot('2026-10-20T10:00:00+02:00', 'claim-a', client), true);
+  assert.equal(await claimBookingSlot('2026-10-20T08:00:00Z', 'claim-b', client), false);
+  assert.equal(new URL(calls[0].url).pathname, '/rest/v1/lava_booking_slots');
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    slot_start: '2026-10-20T08:00:00.000Z',
+    claim_token: 'claim-a',
+  });
+});
+
+test('claimBookingSlot rejects bad input and throws on non-conflict storage failures', async () => {
+  const { client } = fakeClient(() => new Response('nope', { status: 500 }));
+  await assert.rejects(claimBookingSlot('not-a-date', 'claim-a', client), /slot start/i);
+  await assert.rejects(claimBookingSlot('2026-10-20T08:00:00Z', '', client), /claim token/i);
+  await assert.rejects(claimBookingSlot('2026-10-20T08:00:00Z', 'claim-a', client), /500/);
 });

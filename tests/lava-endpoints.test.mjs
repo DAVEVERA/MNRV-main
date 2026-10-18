@@ -4,6 +4,7 @@ import { createHash, createVerify, generateKeyPairSync } from 'node:crypto';
 import test from 'node:test';
 
 import { createAvailabilityHandler } from '../api/lava/availability.mjs';
+import { createBookHandler } from '../api/lava/book.mjs';
 import sessionHandler from '../api/lava/session.mjs';
 
 import {
@@ -286,6 +287,14 @@ test('insertEvent sends no attendees field', async () => {
     assert.deepEqual(body.end, { dateTime: '2026-10-20T10:30:00+02:00', timeZone: 'Europe/Amsterdam' });
     assert.equal(body.summary, 'LAVA intake — Mark de Wit');
     assert.equal(body.description, 'Intake gesprek');
+  });
+});
+
+test('insertEvent sends a caller-supplied collision id to Google', async () => {
+  await withEnv({}, async () => {
+    const s = stub(() => json({ id: 'lavaabc123', htmlLink: 'l' }));
+    await insertEvent({ ...EVENT, id: 'lavaabc123', withMeet: false }, s.fetchImpl);
+    assert.equal(JSON.parse(s.api()[0].body).id, 'lavaabc123');
   });
 });
 
@@ -755,5 +764,203 @@ test('availability fails closed when the calendar cannot be read', async () => {
     } finally {
       console.error = originalError;
     }
+  });
+});
+
+// --- book.mjs (Task 8) ---
+
+const BOOK_NOW = new Date('2026-10-19T08:00:00.000Z');
+const BOOK_BODY = {
+  kind: 'intake',
+  naam: 'Mark de Wit',
+  email: 'mark@example.nl',
+  uitdaging: 'Onze planning kost te veel handwerk.',
+  startIso: '2026-10-20T10:00:00+02:00',
+  conversationId: 'conv-123',
+};
+
+async function runBook({
+  req,
+  body = BOOK_BODY,
+  busy = [],
+  claimResult = true,
+  claimError,
+  insertError,
+  insertedResult,
+} = {}) {
+  const calls = [];
+  const handler = createBookHandler({
+    now: () => new Date(BOOK_NOW),
+    getBusy: async (timeMin, timeMax) => {
+      calls.push({ kind: 'busy', timeMin, timeMax });
+      return busy;
+    },
+    createStoreClient: () => ({ kind: 'fake-store' }),
+    claimBookingSlot: async (startIso, claimToken, store) => {
+      calls.push({ kind: 'claim', startIso, claimToken, store });
+      if (claimError) throw claimError;
+      return claimResult;
+    },
+    insertEvent: async (event) => {
+      calls.push({ kind: 'insert', event });
+      if (insertError) throw insertError;
+      return insertedResult ?? {
+        id: 'evt-123',
+        htmlLink: 'https://calendar.google.com/event?eid=evt-123',
+        meetUrl: event.withMeet ? 'https://meet.google.com/abc-defg-hij' : undefined,
+      };
+    },
+  });
+  const actualReq = req ?? fakeReq({
+    body,
+    headers: { 'x-lava-tool-secret': 'tool-secret' },
+  });
+  const res = fakeRes();
+  await handler(actualReq, res);
+  return { res, calls, json: res.body ? JSON.parse(res.body) : undefined };
+}
+
+const inserts = (calls) => calls.filter((call) => call.kind === 'insert');
+
+test('book returns 401 without the tool secret', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook({ req: fakeReq({ body: BOOK_BODY }) });
+    assert.equal(r.res.statusCode, 401);
+    assert.deepEqual(r.json, { ok: false, reason: 'unauthorized' });
+    assert.equal(r.calls.length, 0);
+  });
+});
+
+test('book refuses kind=callback without telefoon with phone_required', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook({ body: { ...BOOK_BODY, kind: 'callback' } });
+    assert.equal(r.res.statusCode, 400);
+    assert.deepEqual(r.json, { ok: false, reason: 'phone_required' });
+    assert.equal(r.calls.length, 0);
+  });
+});
+
+test('book refuses a missing naam, email or uitdaging with missing_field', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    for (const field of ['naam', 'email', 'uitdaging']) {
+      const r = await runBook({ body: { ...BOOK_BODY, [field]: '  ' } });
+      assert.equal(r.res.statusCode, 400, field);
+      assert.deepEqual(r.json, { ok: false, reason: 'missing_field' }, field);
+      assert.equal(r.calls.length, 0, field);
+    }
+  });
+});
+
+test('book rejects an invalid email and incomplete booking identity before calendar I/O', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    for (const body of [
+      { ...BOOK_BODY, email: 'geen-email' },
+      { ...BOOK_BODY, startIso: '' },
+      { ...BOOK_BODY, conversationId: '' },
+      { ...BOOK_BODY, kind: 'other' },
+    ]) {
+      const r = await runBook({ body });
+      assert.equal(r.res.statusCode, 400);
+      assert.deepEqual(r.json, { ok: false, reason: 'missing_field' });
+      assert.equal(r.calls.length, 0);
+    }
+  });
+});
+
+test('book re-checks freebusy and returns 409 slot_taken when the slot filled since the offer', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook({
+      busy: [{ start: '2026-10-20T08:10:00.000Z', end: '2026-10-20T08:20:00.000Z' }],
+    });
+    assert.equal(r.res.statusCode, 409);
+    assert.deepEqual(r.json, { ok: false, reason: 'slot_taken' });
+    assert.equal(inserts(r.calls).length, 0);
+    assert.deepEqual(r.calls[0], {
+      kind: 'busy',
+      timeMin: '2026-10-20T08:00:00.000Z',
+      timeMax: '2026-10-20T08:30:00.000Z',
+    });
+  });
+});
+
+test('book maps an insert collision to slot_taken when another request wins the race', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const collision = Object.assign(new Error('already exists'), { name: 'GoogleApiError', status: 409 });
+    const r = await runBook({ insertError: collision });
+    assert.equal(r.res.statusCode, 409);
+    assert.deepEqual(r.json, { ok: false, reason: 'slot_taken' });
+  });
+});
+
+test('book uses an atomic store claim so concurrent Vercel instances cannot both insert', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook({ claimResult: false });
+    assert.equal(r.res.statusCode, 409);
+    assert.deepEqual(r.json, { ok: false, reason: 'slot_taken' });
+    assert.equal(inserts(r.calls).length, 0);
+    const claim = r.calls.find((call) => call.kind === 'claim');
+    assert.equal(claim.startIso, BOOK_BODY.startIso);
+    assert.match(claim.claimToken, /^[0-9a-f-]{36}$/);
+    assert.deepEqual(r.calls.map((call) => call.kind), ['busy', 'claim']);
+  });
+});
+
+test('book fails closed when the distributed slot claim is unavailable', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      const r = await runBook({ claimError: new Error('store down') });
+      assert.equal(r.res.statusCode, 503);
+      assert.deepEqual(r.json, { ok: false, reason: 'calendar_unavailable' });
+      assert.equal(inserts(r.calls).length, 0);
+    } finally {
+      console.error = originalError;
+    }
+  });
+});
+
+test('book titles an intake event and requests a Meet link', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook();
+    const event = inserts(r.calls)[0].event;
+    assert.equal(event.summary, 'LAVA intake — Mark de Wit');
+    assert.equal(event.withMeet, true);
+    assert.match(event.id, /^lava[0-9a-f]+$/);
+    assert.equal(r.res.statusCode, 200);
+  });
+});
+
+test('book titles a callback event, includes the phone number and does not request Meet', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook({
+      body: { ...BOOK_BODY, kind: 'callback', telefoon: '+31 6 12345678' },
+    });
+    const event = inserts(r.calls)[0].event;
+    assert.equal(event.summary, 'Terugbelverzoek — Mark de Wit');
+    assert.match(event.description, /\+31 6 12345678/);
+    assert.equal(event.withMeet, false);
+  });
+});
+
+test('book propagates validateSlot rejections without calling insertEvent', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook({ body: { ...BOOK_BODY, startIso: '2026-10-19T10:30:00+02:00' } });
+    assert.equal(r.res.statusCode, 400);
+    assert.deepEqual(r.json, { ok: false, reason: 'too_soon' });
+    assert.equal(r.calls.length, 0);
+  });
+});
+
+test('book returns icsText containing the booked start time and visitor invitation', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook();
+    assert.equal(r.res.statusCode, 200);
+    assert.equal(r.json.ok, true);
+    assert.equal(r.json.startIso, BOOK_BODY.startIso);
+    assert.equal(r.json.label, 'dinsdag 20 oktober om 10:00');
+    assert.match(r.json.icsText, /DTSTART:20261020T080000Z\r\n/);
+    assert.match(r.json.icsText, /ATTENDEE:mailto:mark@example\.nl\r\n/);
+    assert.match(r.json.icsText, /Google Meet: https:\/\/meet\.google\.com\/abc-defg-hij/);
   });
 });

@@ -6,7 +6,7 @@
 
 **Architecture:** An ElevenLabs Agents-platform agent (Claude as the model, voice `4giVXkrLUjoVUeP6Gqol`) handles speech and turn-taking. All business logic lives in Vercel functions under `api/lava/` as webhook tools: availability, booking, report. A browser module `js/lava/` connects over WebRTC using a short-lived token minted server-side, renders the Win98 `LAVA.exe` window plus a live "Wat LAVA begrijpt" notes window, and falls back to an overlay shell on mobile and on the modern route. Pure logic (booking rules, ICS, report composition, notes model) sits in importable ESM modules so it is unit-testable without a browser or a network.
 
-**Tech Stack:** Vanilla ES modules (no bundler — the site has none), Node 18+ Vercel functions as `.mjs`, `node:test` for tests, `@elevenlabs/client` from a pinned jsDelivr ESM URL, Google Calendar REST v3, Resend, Supabase (counter only), Cloudflare Turnstile.
+**Tech Stack:** Vanilla ES modules (no bundler — the site has none), Node 18+ Vercel functions as `.mjs`, `node:test` for tests, `@elevenlabs/client` from a pinned jsDelivr ESM URL, Google Calendar REST v3, Resend, Supabase (session cap, slot mutex and report idempotency only), Cloudflare Turnstile.
 
 **Spec:** `docs/superpowers/specs/2026-10-18-mnrv-lava-voice-agent-design.md`
 
@@ -25,7 +25,7 @@
 - Retention: audio 90 days, transcripts 365 days.
 - Mobile is in scope for v1.
 - All user-visible strings are Dutch. Identifiers, code, tests, commit messages and log output are English.
-- No database for conversations. Supabase is used only for the session counter and report idempotency.
+- No database for conversations. Supabase stores only technical guards: the session counter, appointment-slot mutexes without visitor data, and report idempotency.
 - Every CDN URL pins an exact version. No floating tags.
 - New functions are `.mjs` (ESM). Do not convert the existing CommonJS `api/send-intake-mail.js`.
 
@@ -51,7 +51,7 @@
 
 **Create — I/O:**
 - `api/lava/_lib/google.mjs` — Calendar auth, freebusy, insert
-- `api/lava/_lib/store.mjs` — Supabase counter and idempotency
+- `api/lava/_lib/store.mjs` — Supabase counter, slot mutex and idempotency
 - `api/lava/_lib/mail.mjs` — Resend with attachments
 - `api/lava/session.mjs`, `availability.mjs`, `book.mjs`, `report.mjs`, `post-call.mjs`
 
@@ -433,10 +433,11 @@ git commit -m "feat(lava): availability tool endpoint"
 
 **Files:**
 - Create: `api/lava/book.mjs`
+- Modify: `api/lava/_lib/google.mjs`, `api/lava/_lib/store.mjs`, `supabase/supabase-lava.sql`
 - Test: `tests/lava-endpoints.test.mjs` (book section)
 
 **Interfaces:**
-- Consumes: `validateSlot` (Task 1), `buildIcs` (Task 2), `getBusy`, `insertEvent` (Task 4), `verifyToolAuth` (Task 5).
+- Consumes: `validateSlot` (Task 1), `buildIcs` (Task 2), `getBusy`, `insertEvent` (Task 4), `verifyToolAuth`, `claimBookingSlot` (Task 5 store).
 - Produces: `POST /api/lava/book` with body `{ kind: 'intake' | 'callback', naam, email, telefoon?, uitdaging, startIso, conversationId }` returning `200 { ok: true, startIso, label, icsText }` or `409 { ok: false, reason: 'slot_taken' }` or `400 { ok: false, reason: <validateSlot reason> | 'phone_required' | 'missing_field' }`.
 
 `icsText` is the full iCalendar text. The agent passes it straight to the `show_appointment` client tool (Task 12) so the browser can offer it as a download; nothing is stored between requests.
@@ -464,7 +465,7 @@ Expected: FAIL
 
 - [ ] **Step 3: Implement the handler**
 
-Order: tool auth, field validation, `validateSlot`, freebusy re-check for exactly that slot, `insertEvent`. Keep the ICS text in memory keyed by `icsToken` only as far as the report endpoint needs it — regenerate it in Task 9 from the stored appointment fields instead of holding state between requests.
+Order: tool auth, field validation, `validateSlot`, freebusy re-check for exactly that slot, atomic Supabase slot claim, `insertEvent`. The slot claim stores only the canonical start and a random token; it contains no visitor or conversation data. A deterministic Google event id remains a second idempotency guard, because Google documents that event-id collision detection is not guaranteed at creation time in its distributed backend. Keep the ICS text in memory keyed by `icsToken` only as far as the report endpoint needs it — regenerate it in Task 9 from the stored appointment fields instead of holding state between requests.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -474,7 +475,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add api/lava/book.mjs tests/lava-endpoints.test.mjs
+git add api/lava/book.mjs api/lava/_lib/google.mjs api/lava/_lib/store.mjs supabase/supabase-lava.sql tests/lava-endpoints.test.mjs
 git commit -m "feat(lava): booking tool endpoint"
 ```
 
