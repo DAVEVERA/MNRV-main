@@ -89,6 +89,13 @@ function parseBusyRange(entry) {
 // Time part must end in Z or an explicit offset; no host-zone guessing.
 const ISO_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i;
 
+// 'YYYY-MM-DD' of an instant on the booking-timezone wall clock; the key shape
+// generateSlots reads from bookedPerDay.
+export function localDateKey(date) {
+  const p = localParts(date);
+  return dateKey(p.year, p.month, p.day);
+}
+
 /**
  * Free slots LAVA may offer, ascending, as ISO strings with the Amsterdam offset.
  * `bookedPerDay` is keyed by local date, 'YYYY-MM-DD'.

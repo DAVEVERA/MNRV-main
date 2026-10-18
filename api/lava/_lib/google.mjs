@@ -7,13 +7,15 @@
 
 import { createSign, randomUUID } from 'node:crypto';
 
+import { localDateKey } from './rules.mjs';
+
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const API = 'https://www.googleapis.com/calendar/v3';
 const SCOPE = 'https://www.googleapis.com/auth/calendar';
 const TIME_ZONE = 'Europe/Amsterdam';
 const DEFAULT_CALENDAR_ID = 'info@mnrv.nl';
 // U+2014 em dash, as in the spec. A hyphen would silently match nothing.
-const LAVA_PREFIXES = ['LAVA intake —', 'Terugbelverzoek —'];
+export const LAVA_PREFIXES = ['LAVA intake —', 'Terugbelverzoek —'];
 
 export class GoogleConfigError extends Error {
   constructor(message) {
@@ -23,10 +25,11 @@ export class GoogleConfigError extends Error {
 }
 
 export class GoogleApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, reason) {
     super(message);
     this.name = 'GoogleApiError';
     this.status = status;
+    this.reason = reason; // Google's structured error.errors[0].reason, when present
   }
 }
 
@@ -47,8 +50,14 @@ async function readJson(response, what) {
     // Handled below: an unreadable body is an error either way.
   }
   if (!response.ok) {
-    const detail = body?.error?.message ?? body?.error_description ?? body?.error ?? '';
-    throw new GoogleApiError(`${what} failed with HTTP ${response.status} ${detail}`.trim(), response.status);
+    const candidates = [body?.error?.message, body?.error_description, body?.error];
+    const detail = candidates.find((c) => typeof c === 'string' && c) ?? '';
+    const reason = body?.error?.errors?.[0]?.reason;
+    throw new GoogleApiError(
+      `${what} failed with HTTP ${response.status} ${detail}`.trim(),
+      response.status,
+      typeof reason === 'string' ? reason : undefined,
+    );
   }
   if (body === null || typeof body !== 'object') {
     throw new GoogleApiError(`${what} returned an unreadable body`, response.status);
@@ -128,16 +137,6 @@ export async function getBusy(timeMinIso, timeMaxIso, fetchImpl = fetch) {
   }));
 }
 
-const dayFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-
-// 'YYYY-MM-DD' of an instant on the Amsterdam wall clock, the key rules.mjs expects.
-const localDateKey = (ms) => dayFormatter.format(new Date(ms));
-
 export async function countLavaEventsPerDay(timeMinIso, timeMaxIso, fetchImpl = fetch) {
   const counts = {};
   let pageToken;
@@ -163,12 +162,19 @@ export async function countLavaEventsPerDay(timeMinIso, timeMaxIso, fetchImpl = 
       // Skipping an unreadable LAVA event would undercount and allow a third booking.
       const ms = Date.parse(event.start?.dateTime ?? event.start?.date);
       if (!Number.isFinite(ms)) throw new GoogleApiError(`LAVA event has an unreadable start: ${event.id ?? ''}`);
-      const key = localDateKey(ms);
+      const key = localDateKey(new Date(ms));
       counts[key] = (counts[key] ?? 0) + 1;
     }
     pageToken = body.nextPageToken;
   } while (pageToken);
   return counts;
+}
+
+// A conference-specific refusal, by Google's reason code or a conference-named
+// message, on 400 or 403. Anything else is a real failure and must keep throwing.
+function isConferenceFailure(err) {
+  if (!(err instanceof GoogleApiError) || (err.status !== 400 && err.status !== 403)) return false;
+  return err.reason === 'forbiddenForServiceAccounts' || /conference/i.test(`${err.reason ?? ''} ${err.message}`);
 }
 
 export async function insertEvent(event, fetchImpl = fetch) {
@@ -203,7 +209,7 @@ export async function insertEvent(event, fetchImpl = fetch) {
     } catch (err) {
       // Only a rejection that names the conference degrades. Auth, 5xx and the
       // rest keep throwing: the Meet link is a convenience, the booking is not.
-      if (!(err instanceof GoogleApiError && err.status === 400 && /conference/i.test(err.message))) throw err;
+      if (!isConferenceFailure(err)) throw err;
       meetWarning = `Meet link refused, event booked without it: ${err.message}`;
     }
   }

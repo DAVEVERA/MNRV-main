@@ -8,6 +8,7 @@ import {
   getAccessToken,
   getBusy,
   insertEvent,
+  LAVA_PREFIXES,
 } from '../api/lava/_lib/google.mjs';
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -30,7 +31,7 @@ async function withEnv(overrides, fn) {
   Object.assign(process.env, {
     GOOGLE_SERVICE_ACCOUNT_EMAIL: 'lava@proj.iam.gserviceaccount.com',
     // Vercel stores the key on one line with literal backslash-n sequences.
-    GOOGLE_PRIVATE_KEY: privateKey.replace(/\n/g, '\n'),
+    GOOGLE_PRIVATE_KEY: privateKey.replace(/\n/g, '\\n'),
     ...overrides,
   });
   for (const [k, v] of Object.entries(overrides)) if (v === undefined) delete process.env[k];
@@ -366,5 +367,68 @@ test('insertEvent does not degrade on non-conference failures when withMeet is t
       await assert.rejects(insertEvent({ ...EVENT, withMeet: true }, s.fetchImpl), { name: 'GoogleApiError' });
       assert.equal(s.api().length, 1);
     }
+  });
+});
+
+test('insertEvent degrades on a 403 forbiddenForServiceAccounts conference refusal', async () => {
+  await withEnv({}, async () => {
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      const s = stub((call) =>
+        JSON.parse(call.body).conferenceData
+          ? json({ error: { code: 403, message: 'Service accounts cannot do this.', errors: [{ reason: 'forbiddenForServiceAccounts' }] } }, 403)
+          : json({ id: 'evt-403', htmlLink: 'l' }),
+      );
+      const result = await insertEvent({ ...EVENT, withMeet: true }, s.fetchImpl);
+      assert.equal(s.api().length, 2);
+      assert.equal(result.id, 'evt-403');
+      assert.equal('meetUrl' in result, false);
+      assert.match(result.meetWarning, /forbiddenForServiceAccounts|Service accounts/);
+    } finally {
+      console.warn = warn;
+    }
+  });
+});
+
+test('insertEvent still throws on an unrelated 403 reason when withMeet is true', async () => {
+  await withEnv({}, async () => {
+    const s = stub(() => json({ error: { message: 'Forbidden', errors: [{ reason: 'forbidden' }] } }, 403));
+    await assert.rejects(insertEvent({ ...EVENT, withMeet: true }, s.fetchImpl), (err) => {
+      assert.equal(err.name, 'GoogleApiError');
+      assert.equal(err.reason, 'forbidden');
+      return true;
+    });
+    assert.equal(s.api().length, 1);
+  });
+});
+
+test('GoogleApiError keeps a string detail and never prints [object Object]', async () => {
+  await withEnv({}, async () => {
+    const s = stub(() => json({ error: { code: 500 } }, 500));
+    await assert.rejects(insertEvent({ ...EVENT, withMeet: false }, s.fetchImpl), (err) => {
+      assert.doesNotMatch(err.message, /\[object Object\]/);
+      return true;
+    });
+  });
+});
+
+test('LAVA_PREFIXES uses the em dash and matches what the endpoint will write', () => {
+  assert.deepEqual(LAVA_PREFIXES, ['LAVA intake —', 'Terugbelverzoek —']);
+  assert.ok(LAVA_PREFIXES.every((p) => p.endsWith('—')));
+});
+
+test('countLavaEventsPerDay keys are YYYY-MM-DD in Amsterdam time, including around DST', async () => {
+  await withEnv({}, async () => {
+    const s = stub(() =>
+      json({
+        items: [
+          { summary: 'LAVA intake — X', start: { dateTime: '2026-03-29T09:00:00+02:00' } },
+          { summary: 'LAVA intake — Y', start: { dateTime: '2026-01-05T08:05:00Z' } },
+        ],
+      }),
+    );
+    const counts = await countLavaEventsPerDay('2026-01-01T00:00:00Z', '2026-04-01T00:00:00Z', s.fetchImpl);
+    assert.deepEqual(counts, { '2026-03-29': 1, '2026-01-05': 1 });
   });
 });
