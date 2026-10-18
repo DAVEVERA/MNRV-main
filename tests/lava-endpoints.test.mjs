@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash, createVerify, generateKeyPairSync } from 'node:crypto';
 import test from 'node:test';
 
+import { createAvailabilityHandler } from '../api/lava/availability.mjs';
 import sessionHandler from '../api/lava/session.mjs';
 
 import {
@@ -654,5 +655,105 @@ test('session still hands out the token when recording the grant fails', async (
     const r = await runSession({ record: () => new Response(null, { status: 500 }) });
     assert.equal(r.res.statusCode, 200);
     assert.equal(r.json.token, 'conv-token-1');
+  });
+});
+
+// --- availability.mjs (Task 7) ---
+
+const AVAILABILITY_NOW = new Date('2026-10-19T08:00:00.000Z');
+
+async function runAvailability({
+  req = fakeReq({ headers: { 'x-lava-tool-secret': 'tool-secret' } }),
+  busy = [],
+  bookedPerDay = {},
+  getBusyError,
+} = {}) {
+  const calls = [];
+  const handler = createAvailabilityHandler({
+    now: () => new Date(AVAILABILITY_NOW),
+    getBusy: async (timeMin, timeMax) => {
+      calls.push({ kind: 'busy', timeMin, timeMax });
+      if (getBusyError) throw getBusyError;
+      return busy;
+    },
+    countLavaEventsPerDay: async (timeMin, timeMax) => {
+      calls.push({ kind: 'counts', timeMin, timeMax });
+      return bookedPerDay;
+    },
+  });
+  const res = fakeRes();
+  await handler(req, res);
+  return { res, calls, json: res.body ? JSON.parse(res.body) : undefined };
+}
+
+test('availability returns 401 without the tool secret', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runAvailability({ req: fakeReq() });
+    assert.equal(r.res.statusCode, 401);
+    assert.deepEqual(r.json, { error: 'unauthorized' });
+    assert.equal(r.calls.length, 0);
+  });
+});
+
+test('availability rejects a non-POST method before touching the calendar', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runAvailability({
+      req: fakeReq({ method: 'GET', headers: { 'x-lava-tool-secret': 'tool-secret' } }),
+    });
+    assert.equal(r.res.statusCode, 405);
+    assert.equal(r.res.headers.allow, 'POST');
+    assert.equal(r.calls.length, 0);
+  });
+});
+
+test('availability returns at most three slots and queries one shared calendar range', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runAvailability();
+    assert.equal(r.res.statusCode, 200);
+    assert.equal(r.json.slots.length, 3);
+    assert.deepEqual(r.calls.map((call) => call.kind), ['busy', 'counts']);
+    assert.equal(r.calls[0].timeMin, AVAILABILITY_NOW.toISOString());
+    assert.equal(r.calls[0].timeMax, r.calls[1].timeMax);
+    assert.equal(r.calls[0].timeMin, r.calls[1].timeMin);
+  });
+});
+
+test('availability labels a slot in speakable Dutch with no year', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runAvailability();
+    assert.deepEqual(r.json.slots[0], {
+      start: '2026-10-20T10:00:00+02:00',
+      label: 'dinsdag 20 oktober om 10:00',
+    });
+    assert.doesNotMatch(r.json.slots[0].label, /2026/);
+  });
+});
+
+test('availability returns an empty array and no error when the next three weeks are full', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const bookedPerDay = Object.fromEntries(
+      Array.from({ length: 23 }, (_, i) => {
+        const day = new Date(Date.UTC(2026, 9, 19 + i));
+        return [day.toISOString().slice(0, 10), 2];
+      }),
+    );
+    const r = await runAvailability({ bookedPerDay });
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { slots: [] });
+  });
+});
+
+test('availability fails closed when the calendar cannot be read', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      const r = await runAvailability({ getBusyError: new Error('calendar down') });
+      assert.equal(r.res.statusCode, 503);
+      assert.deepEqual(r.json, { error: 'calendar_unavailable' });
+      assert.equal('slots' in r.json, false);
+    } finally {
+      console.error = originalError;
+    }
   });
 });
