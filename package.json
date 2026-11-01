@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "build:services": "node scripts/generate-service-pages.mjs",
     "test": "node --test"
   },
   "dependencies": {

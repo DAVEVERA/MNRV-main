@@ -2,6 +2,7 @@
 node_modules/
 .claude/
 .playwright-cli/
+output/playwright/
 .sixth/
 assets/windows-95-ui-kit/
 TheDaveGame/

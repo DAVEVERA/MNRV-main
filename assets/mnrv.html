@@ -22,33 +22,67 @@
     gtag('js', new Date());
     gtag('config', 'G-LTWVDY8K85');
   </script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-LTWVDY8K85');
-  </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MNRV — AI-websites, apps &amp; agents | Dave Vera</title>
-<meta name="description" content="MNRV bouwt websites, apps en AI-flows met AI naadloos ingebouwd — chatbots, agents en automatisering. Eén maker voor development, design en AI. Bekijk het werk.">
+<title>MNRV | Websites, e-commerce, AI-agents &amp; SEO</title>
+<meta name="description" content="MNRV bouwt websites, apps, WordPress- en Shopify-platformen, AI-agenten en maatwerksoftware. Inclusief migratie, integraties, technische SEO en AI-vindbaarheid.">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://mnrv.nl/assets/mnrv.html">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mnrv.nl/">
-<meta property="og:title" content="MNRV — AI-websites, apps & agents">
-<meta property="og:description" content="Websites, apps en AI-flows met AI naadloos ingebouwd. Eén maker voor development, design en AI. Mens én machine — digitale ervaringen die converteren, verrassen en binden.">
-<meta property="og:image" content="https://mnrv.nl/og-image.jpg">
+<meta property="og:title" content="MNRV | Websites, e-commerce, AI-agents & SEO">
+<meta property="og:description" content="Websites, commerceplatformen, software-integraties en AI-systemen die strategie, operations, design en development verbinden.">
+<meta property="og:image" content="https://mnrv.nl/assets/img/MNRV_LOGO.png">
 <meta property="og:site_name" content="MNRV">
 <meta property="og:locale" content="nl_NL">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="MNRV — AI-websites, apps & agents">
-<meta name="twitter:description" content="Websites, apps en AI-flows met AI naadloos ingebouwd. Eén maker voor development, design en AI.">
-<meta name="twitter:image" content="https://mnrv.nl/og-image.jpg">
+<meta name="twitter:title" content="MNRV | Websites, e-commerce, AI-agents & SEO">
+<meta name="twitter:description" content="Websites, commerceplatformen, software-integraties en AI-systemen die aantoonbaar werk uit handen nemen.">
+<meta name="twitter:image" content="https://mnrv.nl/assets/img/MNRV_LOGO.png">
+<link rel="icon" type="image/png" href="img/MNRV_LOGO.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://mnrv.nl/#organization",
+      "name": "MNRV",
+      "url": "https://mnrv.nl/",
+      "logo": "https://mnrv.nl/assets/img/MNRV_LOGO.png",
+      "email": "info@mnrv.nl",
+      "telephone": "+31682456410",
+      "sameAs": [
+        "https://www.linkedin.com/in/davevera/",
+        "https://www.instagram.com/mnrv.ai/",
+        "https://www.facebook.com/meneervera/"
+      ]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://mnrv.nl/assets/mnrv.html#webpage",
+      "url": "https://mnrv.nl/assets/mnrv.html",
+      "name": "MNRV | Websites, e-commerce, AI-agents & SEO",
+      "description": "Websites, e-commerce, AI-agenten, maatwerksoftware, workforce automation, reputatie-intelligentie en AI-vindbaarheid.",
+      "isPartOf": { "@id": "https://mnrv.nl/#website" },
+      "about": { "@id": "https://mnrv.nl/#organization" }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://mnrv.nl/#website",
+      "url": "https://mnrv.nl/",
+      "name": "MNRV",
+      "publisher": { "@id": "https://mnrv.nl/#organization" }
+    }
+  ]
+}
+</script>
 <style>
   :root {
     --palladian: #F6F4F0;
@@ -459,7 +493,7 @@
 
   .diensten-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 2px;
   }
 
@@ -528,6 +562,31 @@
     height: 1px;
     margin-bottom: 18px;
     background: rgba(44,59,77,0.3);
+  }
+
+  .dienst-card .dienst-link {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    margin-top: 20px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--abyss);
+    text-decoration: none;
+  }
+
+  .dienst-card .dienst-link:hover,
+  .dienst-card .dienst-link:focus-visible {
+    color: var(--blue);
+    text-decoration: underline;
+    text-underline-offset: 5px;
+  }
+
+  .diensten-all-link {
+    margin-top: 28px;
   }
 
   /* CONTACT + alles eronder = wit */
@@ -895,41 +954,88 @@
 
   /* FOOTER */
   footer {
-    padding: 40px 48px;
-    border-top: 0;
+    padding: 72px 48px 32px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background: #0b0e13;
+  }
+
+  .footer-main {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
-    gap: 24px;
-    align-items: center;
+    grid-template-columns: minmax(240px, 1.25fr) repeat(3, minmax(150px, 0.75fr));
+    gap: clamp(34px, 6vw, 76px);
+    width: min(100%, 1240px);
+    margin: 0 auto;
   }
 
   .footer-trustpilot {
-    align-self: center;
+    margin-top: 18px;
     min-width: 160px;
   }
 
   .footer-logo {
     display: inline-flex;
     align-items: center;
+    margin-bottom: 20px;
   }
 
   .footer-logo img {
     display: block;
     width: 76px;
     height: auto;
-    opacity: 0.42;
+    opacity: 0.72;
+  }
+
+  .footer-brand-copy {
+    max-width: 380px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.5);
+  }
+
+  .footer-column h2 {
+    margin: 0 0 18px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--oatmeal);
+  }
+
+  .footer-column ul {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer-column a {
+    font-size: 13px;
+    line-height: 1.45;
+    color: rgba(255,255,255,0.52);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .footer-column a:hover,
+  .footer-column a:focus-visible {
+    color: rgba(255,255,255,0.9);
+    outline: none;
   }
 
   .footer-copy {
     font-size: 12px;
-    color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.32);
   }
 
   .footer-socials {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: 20px;
   }
 
   .footer-socials a {
@@ -959,12 +1065,10 @@
   }
 
   .footer-legal {
-    grid-column: 1 / -1;
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     flex-wrap: wrap;
     gap: 8px 18px;
-    padding-top: 4px;
   }
 
   .footer-legal a {
@@ -979,6 +1083,16 @@
   .footer-legal a:focus-visible {
     color: rgba(255,255,255,0.72);
     outline: none;
+  }
+
+  .footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    width: min(100%, 1240px);
+    margin: 54px auto 0;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,255,255,0.1);
   }
 
   /* DECORATIVE */
@@ -1006,9 +1120,12 @@
     .diensten-grid { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr; }
     .hero-bg-num { display: none; }
-    footer { padding: 32px 24px; grid-template-columns: 1fr; gap: 14px; text-align: center; }
-    .footer-trustpilot { margin: 0 auto; }
-    .footer-legal { gap: 8px 14px; padding-top: 2px; }
+    footer { padding: 56px 24px 28px; text-align: left; }
+    .footer-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .footer-brand { grid-column: 1 / -1; }
+    .footer-trustpilot { margin: 18px 0 0; }
+    .footer-legal { justify-content: flex-start; gap: 8px 14px; }
+    .footer-bottom { flex-direction: column; margin-top: 42px; }
     .social-flyout {
       left: 14px;
       right: auto;
@@ -1050,6 +1167,9 @@
     .hero-ctas { gap: 8px; }
     .btn-primary { padding: 10px 14px; font-size: 10px; }
     .btn-secondary { padding: 8px 12px; font-size: 10px; }
+    .footer-main { grid-template-columns: 1fr; }
+    .footer-brand { grid-column: auto; }
+    .footer-bottom { margin-top: 34px; }
     .logo-marquee { margin-top: 20px; }
     .logo-marquee-group img { height: 22px; }
     .hero-portret-wrap { max-height: 55vh; }
@@ -1606,38 +1726,59 @@
       <h3>Websites &amp; apps</h3>
       <p>Digitale producten en platforms die niet alleen snel en toegankelijk zijn, maar ook <strong>vindbaar en overtuigend voor zowel mensen als AI-systemen</strong>. Met een conversiegerichte architectuur, duurzame technische fundamenten en een UX die vertrouwen opbouwt vanaf de eerste seconde. Ontworpen om te presteren in een zoeklandschap waarin AI-gedreven verkeer een steeds groter aandeel van je pipeline bepaalt.</p>
       <p class="dienst-hook"><em>“Je website is in 2027 je beste salesmedewerker — of je duurste gemiste kans.”</em></p>
+      <a class="dienst-link" href="/diensten/websites-apps/">Verdiep deze dienst →</a>
     </div>
     <div class="dienst-card">
       <p class="dienst-num">02 / AI</p>
       <h3>Agentic AI &amp; autonome assistenten</h3>
       <p><strong>Van chatbots die antwoorden naar agents die handelen.</strong> Autonome AI-agenten die zelfstandig beslissingen nemen binnen jouw workflows, taken afronden en samenwerken met je teams. In 2027 verwacht 67% van de bedrijven dat AI-agenten autonoom beslissingen nemen in operationele processen. Wij bouwen de infrastructuur, de guardrails en de integraties om die transitie verantwoord te maken — niet als pilot, maar als onderdeel van je dagelijkse operatie.</p>
       <p class="dienst-hook"><em>“De vraag is niet óf je AI-agenten krijgt, maar of ze namens jou de juiste beslissingen nemen.”</em></p>
+      <a class="dienst-link" href="/diensten/agentic-ai/">Verdiep deze dienst →</a>
     </div>
     <div class="dienst-card">
       <p class="dienst-num">03 / Tools</p>
       <h3>Maatwerk &amp; integraties</h3>
       <p><strong>Het zenuwstelsel van je organisatie.</strong> We verbinden systemen, data en teams tot één werkende keten — met maatwerk waar het moet en standaardintegraties waar het kan. Duurzaam gebouwd, zodat je over drie jaar niet opnieuw hoeft te beginnen. En klaar voor een ecosysteem waarin AI-agenten niet alleen jouw tools gebruiken, maar er ook zelfstandig mee samenwerken.</p>
       <p class="dienst-hook"><em>“Systemen die met elkaar praten, processen die zichzelf versnellen.”</em></p>
+      <a class="dienst-link" href="/diensten/maatwerk-integraties/">Verdiep deze dienst →</a>
     </div>
     <div class="dienst-card">
       <p class="dienst-num">04 / Workforce</p>
       <h3>Workforce automation</h3>
       <p><strong>Van handmatige planning naar zelfsturende operatie.</strong> Workforce automation die verder gaat dan dashboards: AI-gestuurde forecasting, skills-based matching en autonome planning. De markt beweegt naar systemen die zelfstandig open diensten invullen op basis van skills en preferenties. Gartner voorspelt dat AI-gedreven automatisering diep geïntegreerd raakt in workforce management om operationele inefficiënties en managementuitval te reduceren. Wij bouwen de brug tussen je huidige processen en die autonome toekomst — zonder de mens uit het oog te verliezen.</p>
       <p class="dienst-hook"><em>“Plan niet met spreadsheets. Plan met intelligentie.”</em></p>
+      <a class="dienst-link" href="/diensten/workforce-automation/">Verdiep deze dienst →</a>
     </div>
     <div class="dienst-card">
       <p class="dienst-num">05 / Reviews</p>
       <h3>Reputatie-intelligentie</h3>
       <p><strong>Reputatie is allang geen sterrenscore meer.</strong> Het speelt zich af op een vierde, veel minder zichtbaar oppervlak: wat AI-engines zoals ChatGPT, Perplexity en Gemini over je merk zeggen wanneer iemand er direct naar vraagt. Reputatie-intelligentie betekent in 2027 dat je niet alleen reviews monitort, maar ook <strong>AI-antwoordpatronen volgt, context interpreteert en urgentie rangschikt</strong>. Wij bouwen systemen die je reputatie bewaken op alle relevante oppervlakken — van klassieke reviewplatformen tot de conversaties die je merk vormgeven buiten je zicht.</p>
       <p class="dienst-hook"><em>“Je reputatie wordt niet alleen door klanten gevormd. AI vertelt het verhaal door.”</em></p>
+      <a class="dienst-link" href="/diensten/reputatie-intelligentie/">Verdiep deze dienst →</a>
     </div>
     <div class="dienst-card">
       <p class="dienst-num">06 / Knowledge</p>
       <h3>Kennisinfrastructuur voor mens en AI</h3>
       <p><strong>Kennis die werkt voor iedereen — mens én machine.</strong> Een centrale, betrouwbare kennislaag waarin bedrijfskennis, processen en antwoorden niet alleen vindbaar zijn, maar ook <strong>activeerbaar voor AI-assistenten en autonome agenten</strong>. Met de opkomst van kennisgrafen en semantische lagen wordt kennis niet langer opgesloten in documenten, maar bruikbaar als directe input voor beslissingen. Duurzaam, governable en gebouwd om mee te groeien — zodat je kennisinfrastructuur over vijf jaar nog steeds de bron van waarheid is.</p>
       <p class="dienst-hook"><em>“Je kennis is alleen waardevol als je systemen hem kunnen gebruiken.”</em></p>
+      <a class="dienst-link" href="/diensten/kennisinfrastructuur/">Verdiep deze dienst →</a>
+    </div>
+    <div class="dienst-card">
+      <p class="dienst-num">07 / Commerce</p>
+      <h3>E-commerce, WordPress &amp; Shopify</h3>
+      <p><strong>Bouw en migratie zonder de operatie of organische waarde uit het oog te verliezen.</strong> We realiseren WordPress-, WooCommerce- en Shopify-platformen, begeleiden catalogus- en contentmigraties en koppelen ERP, PIM, fulfilment, betalingen en marketing. Inclusief redirectstrategie, productdata, structured data en AI-integraties voor zoeken, advies en service.</p>
+      <p class="dienst-hook"><em>“Het platform is pas geslaagd als storefront, data en operatie als één commerceketen werken.”</em></p>
+      <a class="dienst-link" href="/diensten/ecommerce-wordpress-shopify/">Verdiep deze dienst →</a>
+    </div>
+    <div class="dienst-card">
+      <p class="dienst-num">08 / Search</p>
+      <h3>SEO, GEO &amp; AI-vindbaarheid</h3>
+      <p><strong>Technical SEO, entity SEO en information gain voor klassieke én generatieve zoekervaringen.</strong> We verbeteren crawlability, indexability, canonicalization, Core Web Vitals, structured data en topical architecture. Met AEO, GEO en LLMO als praktische werktermen voor citeerbare content, semantische relevantie en consistente entiteiten — zonder keyword stuffing of niet-onderbouwde rankingbeloften.</p>
+      <p class="dienst-hook"><em>“AI-vindbaarheid begint niet bij een truc, maar bij informatie die technisch bereikbaar en inhoudelijk bronwaardig is.”</em></p>
+      <a class="dienst-link" href="/diensten/seo-ai-vindbaarheid/">Verdiep deze dienst →</a>
     </div>
   </div>
+  <a class="btn-secondary diensten-all-link" href="/diensten/">Bekijk alle diensten</a>
 </section>
 
 <!-- OVER -->
@@ -1652,7 +1793,7 @@
       <p class="over-hero-body">Wat ons onderscheidt, is dat we niet denken vanuit losse disciplines, maar vanuit het geheel. De beste digitale oplossingen ontstaan namelijk niet wanneer strategie, processen, design en techniek afzonderlijk van elkaar worden ontwikkeld, maar wanneer ze vanaf het begin als één ecosysteem worden ontworpen.</p>
     </div>
     <div class="over-hero-image">
-      <img src="img/andrew-dave.webp" alt="Andrew en Dave, MNRV" loading="lazy">
+      <img src="img/Andrew%20Dave.png" alt="Andrew en Dave van MNRV" loading="lazy">
     </div>
   </div>
 
@@ -1782,45 +1923,76 @@
 </div>
 
 <footer>
-  <span class="footer-logo">
-    <img src="img/MNRV_LOGO.png" alt="MNRV">
-  </span>
-  <div class="footer-socials" aria-label="Social media">
-    <a href="https://www.instagram.com/mnrv.ai/" target="_blank" rel="noopener" aria-label="Instagram">
-      <svg aria-hidden="true"><use href="#icon-instagram"></use></svg>
-    </a>
-    <a href="https://www.linkedin.com/in/davevera/" target="_blank" rel="noopener" aria-label="LinkedIn">
-      <svg aria-hidden="true"><use href="#icon-linkedin"></use></svg>
-    </a>
-    <a href="https://www.facebook.com/meneervera/" target="_blank" rel="noopener" aria-label="Facebook">
-      <svg aria-hidden="true"><use href="#icon-facebook"></use></svg>
-    </a>
-    <a href="https://wa.me/31682456410" target="_blank" rel="noopener" aria-label="WhatsApp">
-      <svg aria-hidden="true"><use href="#icon-whatsapp"></use></svg>
-    </a>
-    <a href="mailto:info@mnrv.nl" aria-label="E-mail">
-      <svg aria-hidden="true"><use href="#icon-mail"></use></svg>
-    </a>
+  <div class="footer-main">
+    <div class="footer-brand">
+      <a class="footer-logo" href="/assets/mnrv.html" aria-label="MNRV home">
+        <img src="img/MNRV_LOGO.png" alt="MNRV" width="76" height="76">
+      </a>
+      <p class="footer-brand-copy">MNRV verbindt digitale strategie, webdevelopment, e-commerce en toegepaste AI. Van eerste architectuur tot migratie, integratie en doorontwikkeling.</p>
+      <div class="footer-socials" aria-label="Social media">
+        <a href="https://www.instagram.com/mnrv.ai/" target="_blank" rel="noopener" aria-label="Instagram"><svg aria-hidden="true"><use href="#icon-instagram"></use></svg></a>
+        <a href="https://www.linkedin.com/in/davevera/" target="_blank" rel="noopener" aria-label="LinkedIn"><svg aria-hidden="true"><use href="#icon-linkedin"></use></svg></a>
+        <a href="https://www.facebook.com/meneervera/" target="_blank" rel="noopener" aria-label="Facebook"><svg aria-hidden="true"><use href="#icon-facebook"></use></svg></a>
+        <a href="https://wa.me/31682456410" target="_blank" rel="noopener" aria-label="WhatsApp"><svg aria-hidden="true"><use href="#icon-whatsapp"></use></svg></a>
+        <a href="mailto:info@mnrv.nl" aria-label="E-mail"><svg aria-hidden="true"><use href="#icon-mail"></use></svg></a>
+      </div>
+    </div>
+
+    <nav class="footer-column" aria-label="Diensten">
+      <h2>Diensten</h2>
+      <ul>
+        <li><a href="/diensten/websites-apps/">Websites &amp; apps</a></li>
+        <li><a href="/diensten/agentic-ai/">Agentic AI &amp; assistenten</a></li>
+        <li><a href="/diensten/maatwerk-integraties/">Maatwerk &amp; integraties</a></li>
+        <li><a href="/diensten/workforce-automation/">Workforce automation</a></li>
+        <li><a href="/diensten/reputatie-intelligentie/">Reputatie-intelligentie</a></li>
+        <li><a href="/diensten/kennisinfrastructuur/">Kennisinfrastructuur</a></li>
+        <li><a href="/diensten/ecommerce-wordpress-shopify/">E-commerce, WordPress &amp; Shopify</a></li>
+        <li><a href="/diensten/seo-ai-vindbaarheid/">SEO, GEO &amp; AI-vindbaarheid</a></li>
+      </ul>
+    </nav>
+
+    <nav class="footer-column" aria-label="Over MNRV">
+      <h2>MNRV</h2>
+      <ul>
+        <li><a href="/assets/mnrv.html">Home</a></li>
+        <li><a href="/assets/mnrv.html#over">Over ons</a></li>
+        <li><a href="/diensten/">Alle diensten</a></li>
+        <li><a href="/portfolio.html">Portfolio</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/intakeformulier.html">Project starten</a></li>
+      </ul>
+    </nav>
+
+    <div class="footer-column">
+      <h2>Contact</h2>
+      <ul>
+        <li><a href="mailto:info@mnrv.nl">info@mnrv.nl</a></li>
+        <li><a href="tel:+31682456410">06 82 45 64 10</a></li>
+        <li><a href="https://wa.me/31682456410" target="_blank" rel="noopener">WhatsApp</a></li>
+      </ul>
+      <div class="footer-trustpilot trustpilot-widget"
+        data-locale="nl-NL"
+        data-template-id="56278e9abfbbba0bdcd568bc"
+        data-businessunit-id="6a2c2e3fbd8ef9bede041276"
+        data-style-height="40px"
+        data-style-width="100%"
+        data-token="e6acc674-401c-40e7-a158-29c7e5882af0">
+        <a href="https://nl.trustpilot.com/review/mnrv.nl" target="_blank" rel="noopener">Reviews op Trustpilot</a>
+      </div>
+    </div>
   </div>
-  <!-- TrustBox widget - Review Collector -->
-  <div class="footer-trustpilot trustpilot-widget"
-    data-locale="nl-NL"
-    data-template-id="56278e9abfbbba0bdcd568bc"
-    data-businessunit-id="6a2c2e3fbd8ef9bede041276"
-    data-style-height="40px"
-    data-style-width="100%"
-    data-token="e6acc674-401c-40e7-a158-29c7e5882af0">
-    <a href="https://nl.trustpilot.com/review/mnrv.nl" target="_blank" rel="noopener">Trustpilot</a>
+
+  <div class="footer-bottom">
+    <span class="footer-copy">© 2026 MNRV / Dave Vera — mnrv.nl</span>
+    <nav class="footer-legal" aria-label="Juridische documenten MNRV">
+      <a href="Documenten/MNRV_Privacyverklaring_12-06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">Privacyverklaring</a>
+      <a href="Documenten/MNRV_Cookieverklaring_12-06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">Cookieverklaring</a>
+      <a href="Documenten/MNRV_Algemene_Voorwaarden_12-06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">Algemene Voorwaarden</a>
+      <a href="Documenten/MNRV_Verwerkersovereenkomst_12-06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">Verwerkersovereenkomst</a>
+      <a href="Documenten/MNRV_SLA_06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">SLA</a>
+    </nav>
   </div>
-  <!-- End TrustBox widget -->
-  <span class="footer-copy">© 2025 MNRV / Dave Vera — mnrv.nl</span>
-  <nav class="footer-legal" aria-label="Juridische documenten MNRV">
-    <a href="Documenten/MNRV_Privacyverklaring_12-06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">Privacyverklaring</a>
-    <a href="Documenten/MNRV_Cookieverklaring_12-06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">Cookieverklaring</a>
-    <a href="Documenten/MNRV_Algemene_Voorwaarden_12-06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">Algemene Voorwaarden</a>
-    <a href="Documenten/MNRV_Verwerkersovereenkomst_12-06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">Verwerkersovereenkomst</a>
-    <a href="Documenten/MNRV_SLA_06-2026.pdf" target="_blank" rel="noopener" type="application/pdf">SLA</a>
-  </nav>
 </footer>
 
 <script>
