@@ -296,7 +296,7 @@
       <button id="retro-browser-go" class="win-btn btn-sm" type="button">Ga</button>
     </div>
     <div class="win-body retro-browser-body">
-      <iframe id="retro-browser-frame" class="retro-browser-frame" title="Internet Explorer browservenster" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin"></iframe>
+      <iframe id="retro-browser-frame" class="retro-browser-frame" title="Internet Explorer browservenster" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts"></iframe>
     </div>
     <div class="win-statusbar">
       <span class="win-statusbar-section" id="retro-browser-status">Gereed</span>
@@ -331,12 +331,12 @@
   </div>
 
   <!-- ============================================
-       MY LAVA WINDOW (IE-style)
+       MY LAVA WINDOW
        ============================================ -->
   <div id="lava-window" class="win-window hidden lava-window">
     <div class="win-titlebar">
       <img class="win-titlebar-icon" src="assets/icons/Computer_16x16_4.png" alt="My LAVA" draggable="false">
-      <span class="win-titlebar-title">My LAVA - Internet Explorer</span>
+      <span class="win-titlebar-title">My LAVA</span>
       <div class="win-titlebar-buttons">
         <button class="win-titlebar-btn min-btn" title="Minimaliseren">_</button>
         <button class="win-titlebar-btn max-btn" title="Maximaliseren">&#9633;</button>
@@ -345,14 +345,19 @@
     </div>
     <div class="win-addressbar">
       <label>Adres:</label>
-      <input type="text" value="https://omnicontent.nl" readonly class="win-input" title="My LAVA adres" placeholder="Adres">
+      <input type="text" value="assets/mnrv.html#contact" readonly class="win-input" title="My LAVA adres" placeholder="Adres">
     </div>
     <div class="win-body lava-window-body">
-      <iframe class="lava-frame" src="https://omnicontent.nl" title="My LAVA - omnicontent.nl" loading="lazy" allow="microphone; camera; autoplay; clipboard-read; clipboard-write; fullscreen; geolocation; display-capture; encrypted-media; payment; midi" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="lava-local-panel">
+        <img src="assets/icons/Computer_32x32_4.png" alt="" width="32" height="32" draggable="false">
+        <h2>My LAVA</h2>
+        <p>Open de moderne MNRV-route om een project te starten.</p>
+        <a class="win-btn lava-modern-link" href="assets/mnrv.html#contact">Open moderne route</a>
+      </div>
     </div>
     <div class="win-statusbar">
       <span class="win-statusbar-section">Gereed</span>
-      <span class="win-statusbar-section">Internet</span>
+      <span class="win-statusbar-section">MNRV</span>
     </div>
   </div>
 
@@ -673,7 +678,9 @@
         '.geo{background:#000;color:#0f0;text-align:left;font-family:"Comic Sans MS","Times New Roman",serif}.geo .wrap{text-align:left}.geo h1{color:#ff0;text-align:center}.blink{animation:blink 1s steps(1) infinite}@keyframes blink{50%{opacity:0}}' +
         '.mnrv{text-align:left}.mnrv h1{font:24px Arial,sans-serif;color:#000080}.mnrv ul{line-height:1.7}' +
         '.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}' +
-        '</style><title>' + escapeHtml(title) + '</title></head><body>' + body + '</body></html>';
+        '</style><title>' + escapeHtml(title) + '</title></head><body>' + body +
+        '<script>function sendRetroBrowserAction(action,value){parent.postMessage({source:"mnrv-retro-browser",action:action,value:value},"*");}<\/script>' +
+        '</body></html>';
     }
 
     function searchPage(url) {
@@ -684,11 +691,11 @@
       return pageChrome('Google', '<div class="wrap">' +
         '<div class="logo"><span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span></div>' +
         '<p><b>MNRV Internet Explorer</b></p>' +
-        '<input class="search" value="' + safeValue + '" onkeydown="if(event.key===&quot;Enter&quot;){parent.MNRVRetroBrowser.search(this.value)}">' +
-        '<div><button onclick="parent.MNRVRetroBrowser.search(document.querySelector(&quot;.search&quot;).value)">Google Search</button>' +
-        '<button onclick="parent.MNRVRetroBrowser.go(&quot;http://mnrv.local/&quot;)">I&#39;m Feeling Lucky</button></div>' +
-        '<div class="bar"><a href="#" onclick="parent.MNRVRetroBrowser.go(&quot;http://geocities.com/area51/&quot;);return false;">Browse the old web</a> - ' +
-        '<a href="#" onclick="parent.MNRVRetroBrowser.openModern();return false;">MNRV moderne route</a></div>' +
+        '<input class="search" value="' + safeValue + '" onkeydown="if(event.key===&quot;Enter&quot;){sendRetroBrowserAction(&quot;search&quot;,this.value)}">' +
+        '<div><button onclick="sendRetroBrowserAction(&quot;search&quot;,document.querySelector(&quot;.search&quot;).value)">Google Search</button>' +
+        '<button onclick="sendRetroBrowserAction(&quot;go&quot;,&quot;http://mnrv.local/&quot;)">I&#39;m Feeling Lucky</button></div>' +
+        '<div class="bar"><a href="#" onclick="sendRetroBrowserAction(&quot;go&quot;,&quot;http://geocities.com/area51/&quot;);return false;">Browse the old web</a> - ' +
+        '<a href="#" onclick="sendRetroBrowserAction(&quot;modern&quot;);return false;">MNRV moderne route</a></div>' +
         '<p class="small">Nostalgische browserweergave. Geen lokale bestanden, geen server, geen externe emulator.</p>' +
         '</div>');
     }
@@ -698,7 +705,7 @@
         '<h1>Welcome to Area 51 / MNRV Net</h1>' +
         '<p class="blink">UNDER CONSTRUCTION</p>' +
         '<p>This page is best viewed in Internet Explorer 5.0 at 800x600.</p>' +
-        '<hr><p><a href="#" onclick="parent.MNRVRetroBrowser.go(&quot;http://google.com/&quot;);return false;">Back to Search</a></p>' +
+        '<hr><p><a href="#" onclick="sendRetroBrowserAction(&quot;go&quot;,&quot;http://google.com/&quot;);return false;">Back to Search</a></p>' +
         '<p>Email the webmaster: info@mnrv.local</p>' +
         '</div></div>');
     }
@@ -707,8 +714,8 @@
       return pageChrome('MNRV', '<div class="wrap mnrv">' +
         '<h1>MNRV</h1><p>Welkom op de nostalgische Internet Explorer editie.</p>' +
         '<ul><li>AI agents</li><li>Websites</li><li>UX/UI</li><li>Automation</li></ul>' +
-        '<p><a href="#" onclick="parent.MNRVRetroBrowser.openModern();return false;">Bekijk de moderne route</a></p>' +
-        '<p><a href="#" onclick="parent.MNRVRetroBrowser.go(&quot;http://google.com/&quot;);return false;">Terug naar start</a></p>' +
+        '<p><a href="#" onclick="sendRetroBrowserAction(&quot;modern&quot;);return false;">Bekijk de moderne route</a></p>' +
+        '<p><a href="#" onclick="sendRetroBrowserAction(&quot;go&quot;,&quot;http://google.com/&quot;);return false;">Terug naar start</a></p>' +
         '</div>');
     }
 
@@ -770,8 +777,6 @@
       window.location.href = 'assets/mnrv.html';
     }
 
-    window.MNRVRetroBrowser = { go: go, search: search, openModern: openModern };
-
     function initRetroBrowser() {
       frame = document.getElementById('retro-browser-frame');
       address = document.getElementById('retro-browser-address');
@@ -802,6 +807,17 @@
 
       go(currentUrl);
     }
+
+    window.addEventListener('message', function(event) {
+      if (!frame || event.source !== frame.contentWindow) return;
+
+      var message = event.data;
+      if (!message || message.source !== 'mnrv-retro-browser') return;
+
+      if (message.action === 'go') go(message.value);
+      if (message.action === 'search') search(message.value);
+      if (message.action === 'modern') openModern();
+    });
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initRetroBrowser);
@@ -879,8 +895,6 @@
       agent.show();
       agent.play('Greeting');
       agent.speak(generalTips[0]);
-      agent.mute();
-
       // Disable the built-in drag (we want Clippy pinned)
       var el = document.querySelector('.clippy');
       if (el) {

@@ -1583,7 +1583,9 @@
   }
   .modal-blocked.visible { display: flex; }
 </style>
+  <link rel="stylesheet" href="portfolio-monitors.css?v=20261101-hero3">
   <link rel="stylesheet" href="../components/cookie-banner.css">
+  <script src="portfolio-monitors.js?v=20261101-hero" defer></script>
   <script src="../components/cookie-banner.js" defer></script>
   <!-- TrustBox script -->
   <script type="text/javascript" src="https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
@@ -1670,48 +1672,87 @@
   </div>
 </aside>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-bg-num">AI</div>
-  <div class="hero-inner">
-    <div class="hero-text">
-      <p class="hero-label">mnrv.nl — Dave Vera</p>
-      <h1 class="hero-title">Verbinden doet versnellen.</h1>
-      <p class="hero-sub">
-        Orkestratie van technologie. Synthese van systemen. Versnelling van resultaat.
-      </p>
-      <div class="hero-ctas">
-        <a href="#contact" class="btn-primary">Start een project</a>
-        <a href="../portfolio.html" class="btn-secondary">Bekijk werk</a>
-      </div>
-      <div class="logo-marquee" aria-label="Opdrachtgevers">
-        <div class="logo-marquee-track">
-          <div class="logo-marquee-group">
-            <img src="logo_clients/FAINL.png" alt="FAINL" loading="lazy">
-            <img src="logo_clients/windofy-logo.png" alt="Windofy" loading="lazy">
-            <img src="logo_clients/Notenman_logo.png" alt="Notenman" loading="lazy">
-            <img src="logo_clients/mrjvoluit.png" alt="MRJ Voluit" loading="lazy">
-            <img src="logo_clients/oostendorpauto.png" alt="Oostendorp Auto" loading="lazy">
-            <img src="logo_clients/sverdriet_logo.webp" alt="S. Verdriet" loading="lazy">
-          </div>
-          <div class="logo-marquee-group" aria-hidden="true">
-            <img src="logo_clients/FAINL.png" alt="" loading="lazy">
-            <img src="logo_clients/windofy-logo.png" alt="" loading="lazy">
-            <img src="logo_clients/Notenman_logo.png" alt="" loading="lazy">
-            <img src="logo_clients/mrjvoluit.png" alt="" loading="lazy">
-            <img src="logo_clients/oostendorpauto.png" alt="" loading="lazy">
-            <img src="logo_clients/sverdriet_logo.webp" alt="" loading="lazy">
-          </div>
-        </div>
+<!-- HERO: INTERACTIEVE MONITORWAND -->
+<section class="monitor-portfolio" id="werk" aria-labelledby="werk-title">
+  <div class="monitor-hero__copy">
+    <p class="monitor-hero__eyebrow">mnrv.nl — Dave Vera</p>
+    <h1 class="monitor-hero__title" id="werk-title">Verbinden doet versnellen.</h1>
+    <p class="monitor-hero__lead">Orkestratie van technologie. Synthese van systemen. Versnelling van resultaat.</p>
+    <div class="monitor-hero__actions">
+      <a href="#contact" class="monitor-hero__primary">Start een project</a>
+      <a href="#diensten" class="monitor-hero__secondary">Bekijk diensten</a>
+    </div>
+  </div>
+
+  <div class="monitor-wall-viewport">
+    <div class="monitor-wall-stage">
+      <div class="monitor-wall-scene">
+        <img class="monitor-wall-hardware" src="img/portfolio/monitor-wall.png" width="1681" height="936" alt="Acht retrocomputers met elk een interactief projectscherm" fetchpriority="high">
+
+        <button class="monitor-screen" type="button" data-project="fainl" data-title="FAINL" data-live-url="https://fainl.com" data-external-url="https://fainl.com" data-embed="false" style="--x: 19.10%; --y: 18.85%; --w: 12.65%; --h: 16.95%;">
+          <img src="img/portfolio/previews/fainl.png" alt="">
+          <span class="monitor-screen__label">FAINL</span>
+          <span class="sr-only">Bekijk FAINL</span>
+        </button>
+
+        <button class="monitor-screen" type="button" data-project="mrsvision" data-title="MRSVision" data-live-url="https://mrj526-635857755618.europe-west4.run.app/" data-external-url="https://mrsvision.nl" style="--x: 38.15%; --y: 12.25%; --w: 11.00%; --h: 13.55%;">
+          <img src="img/portfolio/previews/mrsvision.png" alt="">
+          <span class="monitor-screen__label">MRSVision</span>
+          <span class="sr-only">Bekijk MRSVision</span>
+        </button>
+
+        <button class="monitor-screen" type="button" data-project="windofy" data-title="Windofy" data-live-url="https://windofy.com" data-external-url="https://windofy.com" style="--x: 53.15%; --y: 20.55%; --w: 9.20%; --h: 12.85%;">
+          <img src="img/portfolio/previews/windofy.png" alt="">
+          <span class="monitor-screen__label">Windofy</span>
+          <span class="sr-only">Bekijk Windofy</span>
+        </button>
+
+        <button class="monitor-screen" type="button" data-project="mr-jealousy" data-title="Mr. Jealousy" data-live-url="https://www.mrjealousy.com" data-external-url="https://www.mrjealousy.com" data-embed="false" style="--x: 64.95%; --y: 10.30%; --w: 11.20%; --h: 14.35%;">
+          <img src="img/portfolio/previews/mr-jealousy.png" alt="">
+          <span class="monitor-screen__label">Mr. Jealousy</span>
+          <span class="sr-only">Bekijk Mr. Jealousy</span>
+        </button>
+
+        <button class="monitor-screen" type="button" data-project="denotenman" data-title="De Notenman" data-live-url="https://denotenman.com" data-external-url="https://denotenman.com" style="--x: 79.45%; --y: 37.25%; --w: 15.85%; --h: 18.80%;">
+          <img src="img/portfolio/previews/denotenman.png" alt="">
+          <span class="monitor-screen__label">De Notenman</span>
+          <span class="sr-only">Bekijk De Notenman</span>
+        </button>
+
+        <button class="monitor-screen" type="button" data-project="stuk-verdriet" data-title="Stuk Verdriet" data-live-url="https://www.stukverdriet.com/" data-external-url="https://www.stukverdriet.com/" data-embed="false" style="--x: 6.30%; --y: 41.90%; --w: 15.00%; --h: 17.85%;">
+          <img src="img/portfolio/previews/stuk-verdriet.jpg" alt="">
+          <span class="monitor-screen__label">Stuk Verdriet</span>
+          <span class="sr-only">Bekijk Stuk Verdriet</span>
+        </button>
+
+        <button class="monitor-screen" type="button" data-project="mnrv" data-title="MNRV" data-live-url="/assets/mnrv.html" data-external-url="https://mnrv.nl" style="--x: 39.35%; --y: 46.50%; --w: 19.40%; --h: 21.95%;">
+          <img src="img/portfolio/previews/mnrv.png" alt="">
+          <span class="monitor-screen__label">MNRV</span>
+          <span class="sr-only">Bekijk MNRV</span>
+        </button>
+
+        <button class="monitor-screen" type="button" data-project="oostendorp" data-title="Oostendorp Automotive" data-live-url="https://www.oostendorpautomotive.nl/particulieren" data-external-url="https://www.oostendorpautomotive.nl/particulieren" data-embed="false" style="--x: 72.70%; --y: 59.95%; --w: 12.15%; --h: 13.80%;">
+          <img src="img/portfolio/previews/oostendorp.png" alt="">
+          <span class="monitor-screen__label">Oostendorp</span>
+          <span class="sr-only">Bekijk Oostendorp Automotive</span>
+        </button>
       </div>
     </div>
-    <div class="hero-portret">
-      <div class="hero-portret-wrap">
-        <img src="img/DaveHeel.PNG" alt="Dave Vera" class="hero-portret-img">
-        <img src="img/PortretDaveHeel2digital.png" alt="" class="hero-portret-digital" aria-hidden="true">
-        <img src="img/davelizard.png" alt="" class="hero-portret-lizard" aria-hidden="true">
-        <img src="img/mutant.png" alt="" class="hero-portret-mutant" aria-hidden="true">
-      </div>
+  </div>
+
+  <div class="monitor-hero__portrait">
+    <img src="img/DaveHeel.PNG" alt="Dave Vera" fetchpriority="high">
+  </div>
+
+  <p class="monitor-portfolio__hint">Klik op een scherm · bekijk het project</p>
+
+  <div class="monitor-focus" role="dialog" aria-modal="true" aria-labelledby="monitor-focus-title" aria-hidden="true" hidden>
+    <button class="monitor-focus__backdrop" type="button" data-monitor-close tabindex="-1" aria-label="Projectweergave sluiten"></button>
+    <div class="monitor-focus__scene-host"></div>
+    <div class="monitor-focus__toolbar">
+      <span class="monitor-focus__title" id="monitor-focus-title">Project</span>
+      <a class="monitor-focus__external" href="#" target="_blank" rel="noopener">Open website ↗</a>
+      <button class="monitor-focus__close" type="button" data-monitor-close aria-label="Projectweergave sluiten">×</button>
     </div>
   </div>
 </section>
@@ -1897,7 +1938,7 @@
       </div>
     </div>
     <div class="modal-frame-wrap">
-      <iframe id="intake-frame" title="MNRV website intakeformulier" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+      <iframe id="intake-frame" title="MNRV website intakeformulier"></iframe>
     </div>
   </div>
 </div>
