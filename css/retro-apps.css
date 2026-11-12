@@ -1,0 +1,200 @@
+/* Interactive Windows 95-style desktop applications. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.retro-app-window { overflow: hidden; }
+.retro-app-window .win-body { min-height: 0; }
+
+.computer-window { left: 13%; top: 8%; width: min(680px, 72vw); height: min(500px, 72vh); }
+.control-panel-window { left: 18%; top: 10%; width: min(720px, 74vw); height: min(535px, 76vh); }
+.recycle-window { left: 24%; top: 14%; width: min(570px, 66vw); height: min(410px, 64vh); }
+.notepad-window { left: 20%; top: 7%; width: min(650px, 72vw); height: min(500px, 74vh); }
+.paint-window { left: 10%; top: 4%; width: min(880px, 82vw); height: min(650px, 84vh); }
+.dialup-window { left: calc(50% - 190px); top: 16%; width: 380px; height: auto; min-height: 390px; }
+.run-window { left: calc(50% - 210px); top: 25%; width: 420px; min-height: 220px; }
+.calculator-window { left: calc(50% - 130px); top: 14%; width: 260px; height: 360px; min-width: 260px; }
+.command-window { left: 16%; top: 12%; width: min(650px, 74vw); height: min(410px, 62vh); }
+.winver-window { left: calc(50% - 220px); top: 22%; width: 440px; min-height: 255px; }
+.recycle-confirm-dialog { left: calc(50% - 180px); top: 28%; width: 360px; min-height: 175px; }
+
+.retro-real-menu button {
+  height: 18px;
+  padding: 1px 7px;
+  color: #000;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: default;
+}
+
+.retro-real-menu button:hover,
+.retro-real-menu button:focus-visible {
+  color: #fff;
+  background: var(--win-selection-bg);
+  outline: none;
+}
+
+.retro-explorer-toolbar,
+.recycle-toolbar,
+.paint-toolbar,
+.notepad-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border-bottom: 1px solid var(--win-btn-shadow);
+}
+
+.retro-explorer-toolbar label { white-space: nowrap; }
+.retro-explorer-toolbar .win-input { flex: 1; min-width: 0; }
+.retro-explorer-body { flex: 1; padding: 5px; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; }
+
+.retro-explorer-grid,
+.recycle-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  align-content: start;
+  gap: 8px;
+  height: 100%;
+  overflow: auto;
+}
+
+.retro-explorer-item {
+  display: grid;
+  grid-template-rows: 36px auto auto;
+  justify-items: center;
+  align-content: start;
+  min-height: 78px;
+  padding: 4px;
+  color: #000;
+  background: transparent;
+  border: 1px solid transparent;
+  font: inherit;
+  text-align: center;
+  cursor: default;
+}
+
+.retro-explorer-item img { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.retro-explorer-item span { padding: 1px 2px; line-height: 1.2; }
+.retro-explorer-item small { color: #666; font-size: 9px; line-height: 1.2; }
+.retro-explorer-item:hover span,
+.retro-explorer-item:focus span,
+.retro-explorer-item.selected span { color: #fff; background: var(--win-selection-bg); }
+.retro-explorer-item:focus { outline: 1px dotted #000; outline-offset: -2px; }
+
+.control-panel-body { display: grid; grid-template-columns: 145px 1fr; gap: 7px; flex: 1; padding: 7px; }
+.control-icon-list { padding: 4px; overflow-y: auto; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; }
+.control-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 7px 3px;
+  color: #000;
+  background: transparent;
+  border: 1px solid transparent;
+  font: inherit;
+}
+.control-icon img { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.control-icon.selected span { color: #fff; background: var(--win-selection-bg); }
+.control-icon:disabled { color: #777; opacity: .75; }
+
+.display-properties { display: flex; flex-direction: column; min-width: 0; padding: 9px; border: 2px solid; border-color: #fff #000 #000 #fff; }
+.display-properties h2 { margin-bottom: 6px; font-size: 12px; }
+.display-preview { display: grid; place-items: center; height: 115px; margin-bottom: 8px; background: #808080; border: 2px solid; border-color: #000 #fff #fff #000; }
+#display-preview-screen { display: grid; place-items: center; width: 150px; height: 86px; color: #fff; background: #008080; border: 7px solid #222; box-shadow: 0 8px 0 -4px #444; font-size: 10px; }
+.property-tabs { display: flex; align-items: flex-end; position: relative; z-index: 1; }
+.property-tabs button { margin-right: 1px; padding: 3px 8px; background: var(--win-btn-face); border: 2px solid; border-color: #fff #000 #c0c0c0 #fff; font: inherit; }
+.property-tabs button.active { padding-top: 5px; border-bottom-color: var(--win-btn-face); }
+.display-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border: 2px solid; border-color: #fff #000 #000 #fff; }
+.display-fields label { display: grid; gap: 4px; }
+.retro-dialog-actions { display: flex; justify-content: flex-end; gap: 7px; padding: 8px; }
+.display-properties > .retro-dialog-actions { margin-top: auto; padding: 8px 0 0; }
+
+.recycle-toolbar { border-top: 1px solid #fff; }
+.recycle-drop-zone { flex: 1; padding: 6px; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; }
+.recycle-drop-zone.drop-ready,
+#recycle-desktop-icon.drop-ready .icon-label { background-color: #d9e5ff; outline: 1px dashed #000080; }
+.recycle-list { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+
+.notepad-body { flex: 1; padding: 0; background: #fff; }
+#notepad-text { display: block; width: 100%; height: 100%; min-height: 180px; padding: 4px; resize: none; border: 2px solid; border-color: #808080 #fff #fff #808080; outline: none; font: 13px/1.25 "Fixedsys", "Courier New", monospace; white-space: pre; overflow: auto; }
+.notepad-footer { justify-content: space-between; border-top: 1px solid #fff; border-bottom: 0; }
+
+.paint-toolbar { flex-wrap: wrap; border-top: 1px solid #fff; }
+.paint-toolbar label { display: inline-flex; align-items: center; gap: 4px; }
+.paint-tool.active { border-color: #000 #fff #fff #000; background: repeating-conic-gradient(#c0c0c0 0 25%, #fff 0 50%) 0 0 / 2px 2px; }
+.paint-body { flex: 1; padding: 8px; overflow: auto; background: #808080; border: 2px solid; border-color: #808080 #fff #fff #808080; }
+#paint-canvas { display: block; width: 900px; max-width: none; height: 500px; background: #fff; box-shadow: 1px 1px 0 #000; touch-action: none; cursor: crosshair; image-rendering: pixelated; }
+
+.dialup-body { display: grid; gap: 9px; padding: 12px 14px 5px; }
+.dialup-heading { display: grid; grid-template-columns: 42px 1fr; gap: 9px; align-items: center; }
+.dialup-heading img { width: 32px; height: 32px; image-rendering: pixelated; }
+.dialup-body > label:not(.dialup-remember) { display: grid; grid-template-columns: 115px 1fr; gap: 7px; align-items: center; }
+.dialup-remember { padding-left: 122px; }
+.dialup-progress { height: 18px; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; overflow: hidden; }
+#dialup-progress-bar { display: block; width: 0; height: 100%; background: repeating-linear-gradient(90deg, #000080 0 8px, transparent 8px 10px); transition: width .35s steps(5); }
+#dialup-status { min-height: 14px; }
+.dialup-actions { border-top: 1px solid #808080; }
+.dialup-connected #retro-dialup-icon .icon-label::after { content: " ✓"; }
+
+.run-dialog-body { display: grid; grid-template-columns: 40px 1fr; gap: 9px; padding: 12px; }
+.run-dialog-body > img { grid-row: 1 / span 4; width: 32px; height: 32px; image-rendering: pixelated; }
+.run-dialog-body label { display: grid; grid-template-columns: 52px 1fr; gap: 6px; align-items: center; }
+.run-dialog-body .retro-dialog-actions { grid-column: 1 / -1; padding: 4px 0 0; }
+.run-hint { color: #555; font-size: 10px; }
+#run-status { min-height: 14px; color: #800000; }
+
+.calculator-body { display: grid; grid-template-rows: 34px 1fr; gap: 8px; flex: 1; padding: 8px; }
+#calculator-display { display: block; overflow: hidden; padding: 6px; background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; font: 16px "Courier New", monospace; text-align: right; white-space: nowrap; }
+.calculator-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.calculator-keys .win-btn { min-width: 0; padding: 4px; }
+.calculator-keys .win-btn:last-child { grid-column: 1 / -1; }
+
+.command-screen { flex: 1; overflow: auto; padding: 8px; color: #c0c0c0; background: #000; outline: none; font: 15px/1.25 "Fixedsys", "Courier New", monospace; user-select: text; }
+.command-caret { animation: command-blink 1s steps(1) infinite; }
+@keyframes command-blink { 50% { opacity: 0; } }
+
+.winver-body { display: grid; grid-template-columns: 100px 1fr; gap: 14px; padding: 16px; }
+.winver-body img { width: 88px; height: 88px; object-fit: contain; }
+.winver-body h2 { margin-bottom: 7px; font-size: 16px; }
+.winver-body p { margin: 4px 0; }
+.confirm-body { display: grid; grid-template-columns: 42px 1fr; gap: 10px; align-items: center; padding: 16px; }
+.confirm-icon { display: grid; place-items: center; width: 32px; height: 32px; color: #000; background: #ffeb3b; border: 2px solid #000; border-radius: 50%; font-size: 23px; font-weight: bold; }
+
+.desktop[data-resolution="640"] .desktop-icons { grid-template-rows: repeat(auto-fill, 82px); grid-auto-columns: 82px; gap: 10px; }
+.desktop[data-resolution="1024"] .desktop-icons { grid-template-rows: repeat(auto-fill, 68px); grid-auto-columns: 68px; gap: 3px; }
+
+@media (max-width: 768px) {
+  .retro-app-window,
+  .run-window,
+  .winver-window,
+  .recycle-confirm-dialog { min-width: 0; }
+  .control-panel-body { grid-template-columns: 1fr; overflow: auto; }
+  .control-icon-list { display: flex; min-height: 70px; }
+  .control-icon { width: 90px; flex: 0 0 auto; }
+  .display-fields { grid-template-columns: 1fr; }
+  .retro-explorer-grid,
+  .recycle-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .paint-toolbar { max-height: 94px; overflow-y: auto; }
+  .dialup-body > label:not(.dialup-remember) { grid-template-columns: 1fr; gap: 3px; }
+  .dialup-remember { padding-left: 0; }
+  .run-dialog-body { grid-template-columns: 34px 1fr; padding: 9px; }
+  .winver-body { grid-template-columns: 70px 1fr; padding: 10px; }
+  .winver-body img { width: 64px; height: 64px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #dialup-progress-bar,
+  .command-caret { transition: none; animation: none; }
+}

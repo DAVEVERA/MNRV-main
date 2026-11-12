@@ -100,6 +100,8 @@
   function initDesktopIcons() {
     const icons = document.querySelectorAll('.desktop-icon');
     let selectedIcon = null;
+    let lastTouchIcon = null;
+    let lastTouchTime = 0;
 
     function activateIcon(icon) {
       const target = icon.getAttribute('data-target');
@@ -119,7 +121,6 @@
         icon.classList.add('selected');
         selectedIcon = icon;
         closeStartMenu();
-        activateIcon(icon);
       });
 
       icon.addEventListener('dblclick', function(e) {
@@ -132,6 +133,21 @@
           e.preventDefault();
           activateIcon(icon);
         }
+      });
+
+      // A second tap opens the item on touchscreens; mouse users retain the
+      // authentic Windows single-click-select / double-click-open behavior.
+      icon.addEventListener('pointerup', function(e) {
+        if (e.pointerType === 'mouse') return;
+        const now = Date.now();
+        if (lastTouchIcon === icon && now - lastTouchTime < 650) {
+          activateIcon(icon);
+          lastTouchIcon = null;
+          lastTouchTime = 0;
+          return;
+        }
+        lastTouchIcon = icon;
+        lastTouchTime = now;
       });
     });
 
@@ -150,10 +166,67 @@
   }
 
   // --- Windows ---
+  function prepareWindowControls(win) {
+    const labels = [
+      ['.min-btn', 'Minimaliseren'],
+      ['.max-btn', 'Maximaliseren'],
+      ['.close-btn', 'Sluiten']
+    ];
+
+    labels.forEach(function(entry) {
+      const button = win.querySelector(entry[0]);
+      if (!button) return;
+      button.type = 'button';
+      button.setAttribute('aria-label', entry[1]);
+      button.title = entry[1];
+
+      if (!button.parentElement.classList.contains('win-titlebar-hit')) {
+        const hitArea = document.createElement('span');
+        hitArea.className = 'win-titlebar-hit';
+        button.parentNode.insertBefore(hitArea, button);
+        hitArea.appendChild(button);
+        hitArea.addEventListener('click', function(event) {
+          if (event.target === hitArea) button.click();
+        });
+      }
+    });
+  }
+
+  function syncMaximizeControl(win) {
+    const button = win.querySelector('.max-btn');
+    if (!button) return;
+    const maximized = win.classList.contains('maximized');
+    button.classList.toggle('is-restore', maximized);
+    button.setAttribute('aria-label', maximized ? 'Herstellen' : 'Maximaliseren');
+    button.title = maximized ? 'Herstellen' : 'Maximaliseren';
+  }
+
+  function getWorkArea() {
+    const desktop = document.querySelector('.desktop');
+    const taskbar = document.querySelector('.taskbar');
+    return {
+      width: desktop ? desktop.clientWidth : window.innerWidth,
+      height: (desktop ? desktop.clientHeight : window.innerHeight) - (taskbar ? taskbar.offsetHeight : 0)
+    };
+  }
+
+  function clampWindowPosition(win, left, top) {
+    const area = getWorkArea();
+    const minimumVisible = Math.min(32, win.offsetWidth);
+    const titlebar = win.querySelector('.win-titlebar');
+    const titlebarHeight = titlebar ? titlebar.offsetHeight : 18;
+    return {
+      left: Math.min(area.width - minimumVisible, Math.max(minimumVisible - win.offsetWidth, left)),
+      top: Math.min(Math.max(0, area.height - titlebarHeight), Math.max(0, top))
+    };
+  }
+
   function initWindows() {
     const windows = document.querySelectorAll('.win-window');
 
     windows.forEach(function(win) {
+      prepareWindowControls(win);
+      syncMaximizeControl(win);
       // Focus on click
       win.addEventListener('mousedown', function() {
         focusWindow(win);
@@ -230,8 +303,9 @@
       if (!dragState) return;
       const dx = e.clientX - dragState.startX;
       const dy = e.clientY - dragState.startY;
-      dragState.win.style.left = (dragState.origLeft + dx) + 'px';
-      dragState.win.style.top = (dragState.origTop + dy) + 'px';
+      const position = clampWindowPosition(dragState.win, dragState.origLeft + dx, dragState.origTop + dy);
+      dragState.win.style.left = position.left + 'px';
+      dragState.win.style.top = position.top + 'px';
     });
 
     document.addEventListener('mouseup', function() {
@@ -249,8 +323,9 @@
       if (!dragState) return;
       const dx = touch.clientX - dragState.startX;
       const dy = touch.clientY - dragState.startY;
-      dragState.win.style.left = (dragState.origLeft + dx) + 'px';
-      dragState.win.style.top = (dragState.origTop + dy) + 'px';
+      const position = clampWindowPosition(dragState.win, dragState.origLeft + dx, dragState.origTop + dy);
+      dragState.win.style.left = position.left + 'px';
+      dragState.win.style.top = position.top + 'px';
     }, { passive: false });
 
     document.addEventListener('touchend', function() {
@@ -338,6 +413,18 @@
       if (newH > minH) newT = s.origTop + dy;
     }
 
+    const area = getWorkArea();
+    if (newL < 0) {
+      newW += newL;
+      newL = 0;
+    }
+    if (newT < 0) {
+      newH += newT;
+      newT = 0;
+    }
+    newW = Math.max(minW, Math.min(newW, area.width - newL));
+    newH = Math.max(minH, Math.min(newH, area.height - newT));
+
     s.win.style.width = newW + 'px';
     s.win.style.height = newH + 'px';
     s.win.style.left = newL + 'px';
@@ -365,6 +452,7 @@
       };
       win.classList.add('maximized');
     }
+    syncMaximizeControl(win);
   }
 
   function focusWindow(win) {
@@ -415,7 +503,6 @@
   function minimizeWindow(id) {
     const win = document.getElementById(id);
     if (!win) return;
-    stopWindowMedia(win);
     win.classList.remove('focused');
     win._wasMinimized = true;
     // Play minimize animation
@@ -437,6 +524,10 @@
           video.currentTime = 0;
         } catch (e) {}
       }
+    });
+    win.querySelectorAll('iframe').forEach(function(frame) {
+      if (!frame.contentWindow) return;
+      frame.contentWindow.postMessage({ type: 'mnrv-media-stop' }, window.location.origin);
     });
   }
 
@@ -472,12 +563,24 @@
 
     const win = document.getElementById(winId);
     if (!win) return;
+    if (win.hasAttribute('data-no-taskbar')) return;
 
     const title = win.querySelector('.win-titlebar-title');
+    const titleIcon = win.querySelector('.win-titlebar-icon');
     const btn = document.createElement('button');
     btn.className = 'taskbar-window-btn';
+    btn.type = 'button';
     btn.setAttribute('data-window', winId);
-    btn.textContent = title ? title.textContent : winId;
+    btn.setAttribute('aria-label', title ? title.textContent : winId);
+    if (titleIcon) {
+      const icon = titleIcon.cloneNode();
+      icon.removeAttribute('class');
+      icon.alt = '';
+      btn.appendChild(icon);
+    }
+    const label = document.createElement('span');
+    label.textContent = title ? title.textContent : winId;
+    btn.appendChild(label);
     container.appendChild(btn);
   }
 

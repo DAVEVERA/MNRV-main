@@ -1,9 +1,13 @@
 {
   "scripts": {
     "build:services": "node scripts/generate-service-pages.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "test:retro-browser": "playwright test browser-tests/retro-window-manager.spec.mjs --config=playwright.config.mjs"
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0"
   }
 }

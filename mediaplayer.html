@@ -465,6 +465,12 @@
         updateButtons();
       };
 
+      window.addEventListener('message', (event) => {
+        if (event.source !== window.parent || event.origin !== window.location.origin) return;
+        if (!event.data || event.data.type !== 'mnrv-media-stop') return;
+        stop();
+      });
+
       const nextIndex = () => {
         if (!shuffle) return (activeIndex + 1) % tracks.length;
         if (tracks.length < 2) return activeIndex;

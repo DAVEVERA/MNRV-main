@@ -316,6 +316,13 @@ a {
   image-rendering: pixelated;
 }
 
+.taskbar-window-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- System Tray --- */
 .system-tray {
   display: flex;
@@ -587,6 +594,15 @@ a {
   display: flex;
   gap: 2px;
   margin-left: 4px;
+}
+
+.win-titlebar-hit {
+  display: flex;
+  width: 16px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 
 .win-titlebar-btn {
@@ -1427,7 +1443,21 @@ a {
   }
 
   .taskbar-windows {
+    display: flex;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .taskbar-windows::-webkit-scrollbar {
     display: none;
+  }
+
+  .taskbar-window-btn {
+    min-width: 72px;
+    max-width: 108px;
+    height: 28px;
+    padding: 2px 4px;
   }
 
   .win-window {
@@ -1435,6 +1465,28 @@ a {
     top: 2% !important;
     width: 96% !important;
     height: 85% !important;
+  }
+
+  .win-window.maximized {
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: calc(100% - 36px) !important;
+  }
+
+  .win-titlebar {
+    height: 30px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .win-titlebar-buttons {
+    gap: 0;
+  }
+
+  .win-titlebar-hit {
+    width: 28px;
+    height: 26px;
   }
 
   .explorer-tree {
