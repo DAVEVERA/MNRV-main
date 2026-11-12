@@ -3,12 +3,21 @@
    ============================================ */
 
 /* --- CSS Custom Properties --- */
+@font-face {
+  font-family: "MNRV MS Sans Serif";
+  src: url("../assets/audio/win95-media-player-master/example/src/ms-sans-serif.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
   --win-bg: #008080;
   --win-chrome: #c0c0c0;
-  --win-titlebar: linear-gradient(90deg, #000080, #1084d0);
+  --win-titlebar: #000080;
   --win-titlebar-inactive: #808080;
   --win-titlebar-text: #ffffff;
+  --win-titlebar-inactive-text: #c0c0c0;
   --win-text: #000000;
   --win-link: #0000ff;
   --win-icon-text: #ffffff;
@@ -21,7 +30,7 @@
   --win-input-bg: #ffffff;
   --win-scrollbar: #c0c0c0;
   --win-menu-bg: #c0c0c0;
-  --font-main: "Pixelated MS Sans Serif", "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Geneva, sans-serif;
+  --font-main: "MNRV MS Sans Serif", "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Geneva, sans-serif;
   --font-mono: "Fixedsys", "Courier New", Courier, monospace;
 }
 
@@ -450,9 +459,13 @@ a {
 .win-window {
   position: absolute;
   background: var(--win-chrome);
-  border: 2px solid;
-  border-color: var(--win-btn-highlight) var(--win-btn-dark) var(--win-btn-dark) var(--win-btn-highlight);
-  box-shadow: inset 1px 1px 0 var(--win-btn-face), inset -1px -1px 0 var(--win-btn-shadow);
+  border: 0;
+  box-shadow:
+    inset -1px -1px 0 var(--win-btn-dark),
+    inset 1px 1px 0 #dfdfdf,
+    inset -2px -2px 0 var(--win-btn-shadow),
+    inset 2px 2px 0 var(--win-btn-highlight);
+  padding: 3px;
   display: flex;
   flex-direction: column;
   min-width: 200px;
@@ -559,8 +572,8 @@ a {
 .win-titlebar {
   display: flex;
   align-items: center;
-  height: 18px;         /* Win98 SM_CYCAPTION = 18px */
-  padding: 2px 3px;
+  height: 18px;         /* Windows 95 SM_CYCAPTION = 18px */
+  padding: 2px 2px 2px 3px;
   background: var(--win-titlebar);
   color: var(--win-titlebar-text);
   font-size: 11px;
@@ -573,12 +586,13 @@ a {
 
 .win-window:not(.focused) .win-titlebar {
   background: var(--win-titlebar-inactive);
+  color: var(--win-titlebar-inactive-text);
 }
 
 .win-titlebar-icon {
   width: 16px;
   height: 16px;
-  margin-right: 4px;
+  margin: -1px 3px -1px -1px;
   image-rendering: pixelated;
 }
 
@@ -592,8 +606,10 @@ a {
 
 .win-titlebar-buttons {
   display: flex;
+  align-items: center;
   gap: 2px;
   margin-left: 4px;
+  height: 14px;
 }
 
 .win-titlebar-hit {
@@ -609,8 +625,11 @@ a {
   width: 16px;
   height: 14px;
   background: var(--win-btn-face);
-  border: 2px solid;
+  border: 1px solid;
   border-color: var(--win-btn-highlight) var(--win-btn-dark) var(--win-btn-dark) var(--win-btn-highlight);
+  box-shadow:
+    inset -1px -1px 0 var(--win-btn-shadow),
+    inset 1px 1px 0 #dfdfdf;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -626,7 +645,8 @@ a {
 
 .win-titlebar-btn:active {
   border-color: var(--win-btn-dark) var(--win-btn-highlight) var(--win-btn-highlight) var(--win-btn-dark);
-  padding: 1px 0 0 1px;
+  box-shadow: inset 1px 1px 0 var(--win-btn-shadow);
+  padding: 0;
 }
 
 .win-titlebar-btn::before,
@@ -638,8 +658,8 @@ a {
 }
 
 .win-titlebar-btn.min-btn::before {
-  left: 3px;
-  right: 3px;
+  left: 4px;
+  width: 6px;
   bottom: 3px;
   height: 2px;
   background: #000;
@@ -648,7 +668,7 @@ a {
 .win-titlebar-btn.max-btn::before {
   left: 3px;
   top: 3px;
-  width: 8px;
+  width: 9px;
   height: 7px;
   border: 1px solid #000;
   border-top-width: 2px;
@@ -656,7 +676,7 @@ a {
 
 .win-titlebar-btn.max-btn.is-restore::before {
   left: 5px;
-  top: 3px;
+  top: 2px;
   width: 7px;
   height: 6px;
   background: var(--win-btn-face);
@@ -674,26 +694,73 @@ a {
   border-top-width: 2px;
 }
 
-.win-titlebar-btn.close-btn {
-  font-size: 10px;
-  font-weight: bold;
-}
-
 .win-titlebar-btn.close-btn::before,
 .win-titlebar-btn.close-btn::after {
-  left: 7px;
-  top: 2px;
-  width: 2px;
-  height: 10px;
+  left: 4px;
+  top: 3px;
+  width: 1px;
+  height: 1px;
   background: #000;
 }
 
 .win-titlebar-btn.close-btn::before {
-  transform: rotate(45deg);
+  box-shadow:
+    1px 1px #000,
+    2px 2px #000,
+    3px 3px #000,
+    4px 4px #000,
+    5px 5px #000,
+    6px 6px #000;
 }
 
 .win-titlebar-btn.close-btn::after {
-  transform: rotate(-45deg);
+  left: 10px;
+  box-shadow:
+    -1px 1px #000,
+    -2px 2px #000,
+    -3px 3px #000,
+    -4px 4px #000,
+    -5px 5px #000,
+    -6px 6px #000;
+}
+
+.win-titlebar-btn.help-btn {
+  color: #000;
+  font-family: var(--font-main);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 11px;
+}
+
+.win-titlebar-btn.help-btn::before,
+.win-titlebar-btn.help-btn::after {
+  display: none;
+}
+
+.win-titlebar-btn:active::before,
+.win-titlebar-btn:active::after {
+  translate: 1px 1px;
+}
+
+.win-titlebar-btn.help-btn:active {
+  text-indent: 1px;
+  padding-top: 1px;
+}
+
+.win-context-help {
+  position: absolute;
+  right: 5px;
+  top: 22px;
+  z-index: 20;
+  width: min(230px, calc(100% - 10px));
+  padding: 8px;
+  color: var(--win-text);
+  background: #ffffe1;
+  border: 1px solid var(--win-btn-dark);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
 }
 
 /* --- Menu Bar --- */
@@ -1475,7 +1542,7 @@ a {
   }
 
   .win-titlebar {
-    height: 30px;
+    height: 22px;
     padding-top: 2px;
     padding-bottom: 2px;
   }
@@ -1485,8 +1552,16 @@ a {
   }
 
   .win-titlebar-hit {
-    width: 28px;
-    height: 26px;
+    position: relative;
+    width: 22px;
+    height: 18px;
+  }
+
+  .win-titlebar-hit::after {
+    content: "";
+    position: absolute;
+    inset: -4px -3px;
+    pointer-events: none;
   }
 
   .explorer-tree {

@@ -170,6 +170,7 @@
     const labels = [
       ['.min-btn', 'Minimaliseren'],
       ['.max-btn', 'Maximaliseren'],
+      ['.help-btn', 'Contextuele Help'],
       ['.close-btn', 'Sluiten']
     ];
 
@@ -236,6 +237,7 @@
       const closeBtn = win.querySelector('.close-btn');
       const minBtn = win.querySelector('.min-btn');
       const maxBtn = win.querySelector('.max-btn');
+      const helpBtn = win.querySelector('.help-btn');
 
       if (closeBtn) {
         closeBtn.addEventListener('click', function(e) {
@@ -265,6 +267,25 @@
             toggleMaximize(win);
           });
         }
+      }
+
+      if (helpBtn) {
+        helpBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const openHelp = win.querySelector('.win-context-help');
+          if (openHelp) {
+            openHelp.remove();
+            helpBtn.setAttribute('aria-expanded', 'false');
+            return;
+          }
+
+          const help = document.createElement('div');
+          help.className = 'win-context-help';
+          help.setAttribute('role', 'tooltip');
+          help.textContent = win.getAttribute('data-context-help') || 'Klik op een onderdeel voor meer informatie.';
+          win.appendChild(help);
+          helpBtn.setAttribute('aria-expanded', 'true');
+        });
       }
 
       // Add resize handles (skip dialogs)
@@ -496,6 +517,10 @@
     const win = document.getElementById(id);
     if (!win) return;
     stopWindowMedia(win);
+    const contextualHelp = win.querySelector('.win-context-help');
+    if (contextualHelp) contextualHelp.remove();
+    const helpButton = win.querySelector('.help-btn');
+    if (helpButton) helpButton.setAttribute('aria-expanded', 'false');
     win.classList.add('hidden');
     removeTaskbarButton(id);
   }
@@ -619,7 +644,7 @@
       '<div class="win-titlebar">',
       '  <span class="win-titlebar-title">Afsluiten</span>',
       '  <div class="win-titlebar-buttons">',
-      '    <button class="win-titlebar-btn close-btn" onclick="this.closest(\'.win-window\').classList.add(\'hidden\')">X</button>',
+      '    <button class="win-titlebar-btn close-btn" type="button" aria-label="Sluiten" title="Sluiten" onclick="this.closest(\'.win-window\').classList.add(\'hidden\')">X</button>',
       '  </div>',
       '</div>',
       '<div class="dialog-content">',
@@ -635,6 +660,7 @@
     ].join('\n');
 
     document.querySelector('.desktop').appendChild(dialog);
+    prepareWindowControls(dialog);
     focusWindow(dialog);
   }
 

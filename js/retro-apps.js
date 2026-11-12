@@ -33,18 +33,22 @@
     } catch (error) {}
   }
 
-  function windowButtons() {
-    return '<div class="win-titlebar-buttons">' +
-      '<button class="win-titlebar-btn min-btn" type="button" aria-label="Minimaliseren" title="Minimaliseren">_</button>' +
-      '<button class="win-titlebar-btn max-btn" type="button" aria-label="Maximaliseren" title="Maximaliseren">&#9633;</button>' +
-      '<button class="win-titlebar-btn close-btn" type="button" aria-label="Sluiten" title="Sluiten">X</button>' +
-      '</div>';
+  function windowButtons(mode) {
+    var controls = '';
+    if (mode === 'help-close') {
+      controls += '<button class="win-titlebar-btn help-btn" type="button" aria-label="Contextuele Help" title="Contextuele Help" aria-expanded="false">?</button>';
+    } else if (mode !== 'close-only') {
+      controls += '<button class="win-titlebar-btn min-btn" type="button" aria-label="Minimaliseren" title="Minimaliseren">_</button>' +
+        '<button class="win-titlebar-btn max-btn" type="button" aria-label="Maximaliseren" title="Maximaliseren">&#9633;</button>';
+    }
+    controls += '<button class="win-titlebar-btn close-btn" type="button" aria-label="Sluiten" title="Sluiten">X</button>';
+    return '<div class="win-titlebar-buttons">' + controls + '</div>';
   }
 
-  function titlebar(title, icon) {
+  function titlebar(title, icon, controls) {
     return '<div class="win-titlebar">' +
-      '<img class="win-titlebar-icon" src="' + ICONS + icon + '" alt="" draggable="false">' +
-      '<span class="win-titlebar-title">' + title + '</span>' + windowButtons() + '</div>';
+      (icon ? '<img class="win-titlebar-icon" src="' + ICONS + icon + '" alt="" draggable="false">' : '') +
+      '<span class="win-titlebar-title">' + title + '</span>' + windowButtons(controls) + '</div>';
   }
 
   function desktopIcon(label, target, icon, id) {
@@ -169,8 +173,8 @@
         <div class="win-statusbar"><span class="win-statusbar-section" id="paint-status">Sleep over het tekenvel om te tekenen.</span><span class="win-statusbar-section">900 x 500</span></div>
       </section>
 
-      <section id="dialup-window" class="win-window hidden retro-app-window dialup-window" aria-label="Inbelverbinding">
-        ${titlebar('Verbinding maken met MNRV Net', 'w98_Network_16x16_4.png')}
+      <section id="dialup-window" class="win-window hidden retro-app-window dialup-window" aria-label="Inbelverbinding" data-context-help="Vul uw inbelgegevens in en klik op Verbinden om de gesimuleerde MNRV Net-verbinding tot stand te brengen.">
+        ${titlebar('Verbinding maken met MNRV Net', '', 'help-close')}
         <div class="win-body dialup-body">
           <div class="dialup-heading"><img src="${ICONS}w98_Network_32x32_4.png" alt=""><p>Typ uw gebruikersnaam en wachtwoord en klik vervolgens op Verbinden.</p></div>
           <label>Gebruikersnaam:<input id="dialup-user" class="win-input" value="bezoeker"></label>
@@ -183,8 +187,8 @@
         <div class="retro-dialog-actions dialup-actions"><button class="win-btn win-btn-default" id="dialup-connect" type="button">Verbinden</button><button class="win-btn close-dialog-button" type="button">Annuleren</button></div>
       </section>
 
-      <section id="run-window" class="win-window win-dialog hidden run-window" data-no-taskbar="true" aria-label="Uitvoeren">
-        ${titlebar('Uitvoeren', 'w98_MsDos_16x16_4.png')}
+      <section id="run-window" class="win-window win-dialog hidden run-window" data-no-taskbar="true" aria-label="Uitvoeren" data-context-help="Typ de naam van een programma, map of document dat u wilt openen.">
+        ${titlebar('Uitvoeren', '', 'help-close')}
         <form id="run-form" class="run-dialog-body">
           <img src="${ICONS}w98_MsDos_32x32_4.png" alt="">
           <p>Typ de naam van een programma, map, document of Internet-bron. Windows zal het programma voor u openen.</p>
@@ -207,13 +211,13 @@
       </section>
 
       <section id="winver-window" class="win-window win-dialog hidden winver-window" data-no-taskbar="true" aria-label="Info over MNRV 95">
-        ${titlebar('Info over MNRV 95', 'w98_Computer_16x16_4.png')}
+        ${titlebar('Info over MNRV 95', '', 'close-only')}
         <div class="winver-body"><img src="assets/img/MNRV_LOGO.png" alt="MNRV"><div><h2>Microsoft MNRV 95</h2><p>Versie 4.00.950 MNRV</p><p>Deze retro-omgeving is geregistreerd op naam van:</p><p><strong>Bezoeker van MNRV</strong></p><p>64.0 MB RAM</p></div></div>
         <div class="retro-dialog-actions"><button class="win-btn win-btn-default close-dialog-button" type="button">OK</button></div>
       </section>
 
       <section id="recycle-confirm-dialog" class="win-window win-dialog hidden recycle-confirm-dialog" data-no-taskbar="true" aria-label="Verwijderen bevestigen">
-        ${titlebar('Verwijderen bevestigen', 'w98_RecycleBinFull_16x16_4.png')}
+        ${titlebar('Verwijderen bevestigen', '', 'close-only')}
         <div class="confirm-body"><span class="confirm-icon">!</span><p>Weet u zeker dat u deze items permanent wilt verwijderen?</p></div>
         <div class="retro-dialog-actions"><button class="win-btn win-btn-default" id="recycle-confirm-yes" type="button">Ja</button><button class="win-btn close-dialog-button" type="button">Nee</button></div>
       </section>
@@ -338,9 +342,9 @@
       desktop.style.backgroundImage = 'none';
     }
     var schemes = {
-      classic: ['linear-gradient(90deg, #000080, #1084d0)', '#000080'],
-      plum: ['linear-gradient(90deg, #4b174b, #9a559a)', '#4b174b'],
-      forest: ['linear-gradient(90deg, #174b2c, #4f8e68)', '#174b2c']
+      classic: ['#000080', '#000080'],
+      plum: ['#4b174b', '#4b174b'],
+      forest: ['#174b2c', '#174b2c']
     };
     var scheme = schemes[settings.scheme] || schemes.classic;
     document.documentElement.style.setProperty('--win-titlebar', scheme[0]);

@@ -39,6 +39,27 @@ test('maximize changes to restore and fills the desktop work area', async ({ pag
   await expect(win).not.toHaveClass(/maximized/);
 });
 
+test('title bars and dialog controls match Windows 95 geometry and behavior', async ({ page }) => {
+  await openRetro(page);
+  await openDesktopWindow(page, 'Kladblok');
+  const titlebar = page.locator('#notepad-window .win-titlebar');
+  const control = page.locator('#notepad-window .close-btn');
+  await expect(titlebar).toHaveCSS('background-color', 'rgb(0, 0, 128)');
+  expect(await titlebar.evaluate((element) => element.getBoundingClientRect().height)).toBe(18);
+  expect(await control.evaluate((element) => ({ width: element.offsetWidth, height: element.offsetHeight }))).toEqual({ width: 16, height: 14 });
+
+  await page.locator('#start-btn').click();
+  await page.getByText('Uitvoeren...', { exact: true }).click();
+  const run = page.locator('#run-window');
+  await expect(run.locator('.help-btn')).toHaveCount(1);
+  await expect(run.locator('.close-btn')).toHaveCount(1);
+  await expect(run.locator('.min-btn, .max-btn')).toHaveCount(0);
+  await run.locator('.help-btn').click();
+  await expect(run.locator('.win-context-help')).toBeVisible();
+  await run.locator('.help-btn').click();
+  await expect(run.locator('.win-context-help')).toHaveCount(0);
+});
+
 test('taskbar buttons include the app icon', async ({ page }) => {
   await openRetro(page);
   await openDesktopWindow(page, 'Paint');

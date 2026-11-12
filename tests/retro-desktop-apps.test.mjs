@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [index, main, apps, appCss, player] = await Promise.all([
+const [index, main, apps, appCss, mainCss, player] = await Promise.all([
   readFile(new URL('../index.html', import.meta.url), 'utf8'),
   readFile(new URL('../js/main.js', import.meta.url), 'utf8'),
   readFile(new URL('../js/retro-apps.js', import.meta.url), 'utf8'),
   readFile(new URL('../css/retro-apps.css', import.meta.url), 'utf8'),
+  readFile(new URL('../css/style.css', import.meta.url), 'utf8'),
   readFile(new URL('../mediaplayer.html', import.meta.url), 'utf8'),
 ]);
 
@@ -37,6 +38,17 @@ test('window manager implements accessible restore, mobile taskbar and icon sema
   assert.match(main, /clampWindowPosition/);
   assert.match(main, /titleIcon\.cloneNode/);
   assert.doesNotMatch(main.match(/function minimizeWindow[\s\S]*?\n  }/)?.[0] ?? '', /stopWindowMedia/);
+});
+
+test('window chrome follows the supplied Windows 95 references', () => {
+  assert.match(mainCss, /--win-titlebar:\s*#000080/);
+  assert.match(mainCss, /inset -1px -1px 0 var\(--win-btn-dark\)/);
+  assert.match(mainCss, /\.win-titlebar-btn[\s\S]*?width:\s*16px;[\s\S]*?height:\s*14px;/);
+  assert.match(mainCss, /\.win-titlebar-btn\.help-btn/);
+  assert.match(mainCss, /\.win-titlebar-btn\.close-btn::before[\s\S]*?box-shadow:/);
+  assert.match(apps, /titlebar\('Uitvoeren', '', 'help-close'\)/);
+  assert.match(apps, /titlebar\('Info over MNRV 95', '', 'close-only'\)/);
+  assert.match(main, /win-context-help/);
 });
 
 test('media player accepts the same-origin stop command from its parent', () => {
