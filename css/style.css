@@ -865,12 +865,12 @@ a {
   text-decoration: none;
 }
 .mediaplayer-window {
-  left: 20%;
-  top: 15%;
-  width: 380px;
-  height: 480px;
-  min-width: 350px;
-  min-height: 250px;
+  left: 16%;
+  top: 9%;
+  width: 560px;
+  height: 640px;
+  min-width: 410px;
+  min-height: 420px;
 }
 .mediaplayer-window-body {
   padding: 0 !important;

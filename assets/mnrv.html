@@ -110,14 +110,18 @@
 
   /* NAV */
   body > nav {
-    position: flex;
+    position: absolute;
     top: 0; left: 0; right: 0;
     z-index: 100;
     padding: 20px 80px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(0, 0, 0, 0);
+    background: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .nav-logo {
@@ -1583,7 +1587,7 @@
   }
   .modal-blocked.visible { display: flex; }
 </style>
-  <link rel="stylesheet" href="portfolio-monitors.css?v=20261101-hero3">
+  <link rel="stylesheet" href="portfolio-monitors.css?v=20261101-section1">
   <link rel="stylesheet" href="../components/cookie-banner.css">
   <script src="portfolio-monitors.js?v=20261101-hero" defer></script>
   <script src="../components/cookie-banner.js" defer></script>
@@ -1672,16 +1676,58 @@
   </div>
 </aside>
 
-<!-- HERO: INTERACTIEVE MONITORWAND -->
-<section class="monitor-portfolio" id="werk" aria-labelledby="werk-title">
-  <div class="monitor-hero__copy">
-    <p class="monitor-hero__eyebrow">mnrv.nl — Dave Vera</p>
-    <h1 class="monitor-hero__title" id="werk-title">Verbinden doet versnellen.</h1>
-    <p class="monitor-hero__lead">Orkestratie van technologie. Synthese van systemen. Versnelling van resultaat.</p>
-    <div class="monitor-hero__actions">
-      <a href="#contact" class="monitor-hero__primary">Start een project</a>
-      <a href="#diensten" class="monitor-hero__secondary">Bekijk diensten</a>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-num">AI</div>
+  <div class="hero-inner">
+    <div class="hero-text">
+      <p class="hero-label">mnrv.nl — Dave Vera</p>
+      <h1 class="hero-title">Verbinden doet versnellen.</h1>
+      <p class="hero-sub">
+        Orkestratie van technologie. Synthese van systemen. Versnelling van resultaat.
+      </p>
+      <div class="hero-ctas">
+        <a href="#contact" class="btn-primary">Start een project</a>
+        <a href="#werk" class="btn-secondary">Bekijk werk</a>
+      </div>
+      <div class="logo-marquee" aria-label="Opdrachtgevers">
+        <div class="logo-marquee-track">
+          <div class="logo-marquee-group">
+            <img src="logo_clients/FAINL.png" alt="FAINL" loading="lazy">
+            <img src="logo_clients/windofy-logo.png" alt="Windofy" loading="lazy">
+            <img src="logo_clients/Notenman_logo.png" alt="Notenman" loading="lazy">
+            <img src="logo_clients/mrjvoluit.png" alt="MRJ Voluit" loading="lazy">
+            <img src="logo_clients/oostendorpauto.png" alt="Oostendorp Auto" loading="lazy">
+            <img src="logo_clients/sverdriet_logo.webp" alt="S. Verdriet" loading="lazy">
+          </div>
+          <div class="logo-marquee-group" aria-hidden="true">
+            <img src="logo_clients/FAINL.png" alt="" loading="lazy">
+            <img src="logo_clients/windofy-logo.png" alt="" loading="lazy">
+            <img src="logo_clients/Notenman_logo.png" alt="" loading="lazy">
+            <img src="logo_clients/mrjvoluit.png" alt="" loading="lazy">
+            <img src="logo_clients/oostendorpauto.png" alt="" loading="lazy">
+            <img src="logo_clients/sverdriet_logo.webp" alt="" loading="lazy">
+          </div>
+        </div>
+      </div>
     </div>
+    <div class="hero-portret">
+      <div class="hero-portret-wrap">
+        <img src="img/DaveHeel.PNG" alt="Dave Vera" class="hero-portret-img">
+        <img src="img/PortretDaveHeel2digital.png" alt="" class="hero-portret-digital" aria-hidden="true">
+        <img src="img/davelizard.png" alt="" class="hero-portret-lizard" aria-hidden="true">
+        <img src="img/mutant.png" alt="" class="hero-portret-mutant" aria-hidden="true">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INTERACTIEVE MONITORWAND -->
+<section class="monitor-portfolio" id="werk" aria-labelledby="werk-title">
+  <div class="monitor-portfolio__intro">
+    <p class="monitor-portfolio__eyebrow">Geselecteerd werk</p>
+    <h2 class="monitor-portfolio__title" id="werk-title">Acht projecten. Eén interactieve wand.</h2>
+    <p class="monitor-portfolio__lead">Klik op een scherm om het project van dichtbij te bekijken.</p>
   </div>
 
   <div class="monitor-wall-viewport">
@@ -1740,11 +1786,7 @@
     </div>
   </div>
 
-  <div class="monitor-hero__portrait">
-    <img src="img/DaveHeel.PNG" alt="Dave Vera" fetchpriority="high">
-  </div>
-
-  <p class="monitor-portfolio__hint">Klik op een scherm · bekijk het project</p>
+  <p class="monitor-portfolio__hint">Kies een scherm om in te zoomen</p>
 
   <div class="monitor-focus" role="dialog" aria-modal="true" aria-labelledby="monitor-focus-title" aria-hidden="true" hidden>
     <button class="monitor-focus__backdrop" type="button" data-monitor-close tabindex="-1" aria-label="Projectweergave sluiten"></button>
@@ -2122,19 +2164,6 @@ function initSocialFlyout() {
 }
 
 initSocialFlyout();
-
-// Nav background update based on scroll
-window.addEventListener('scroll', () => {
-  const nav = document.querySelector('nav');
-  const p = Math.min(window.scrollY / 400, 1);
-  if (p > 0.5) {
-    nav.style.background = 'rgba(27,38,50,0.75)';
-    nav.style.borderBottomColor = 'rgba(255,177,98,0.12)';
-  } else {
-    nav.style.background = 'rgba(238,233,223,0.6)';
-    nav.style.borderBottomColor = 'rgba(44,59,77,0.08)';
-  }
-}, { passive: true });
 
 function initIntakeModal() {
   const openButton = document.getElementById('open-intake-modal');

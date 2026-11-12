@@ -22,14 +22,24 @@ test('modern route contains one eight-screen work section', () => {
   assert.equal((html.match(/<section\s+class="monitor-portfolio"/g) ?? []).length, 1);
 });
 
-test('monitor portfolio is the hero with Dave in the foreground', () => {
+test('monitor portfolio sits between the restored hero and services', () => {
+  const heroIndex = html.indexOf('<section class="hero">');
+  const portfolioIndex = html.indexOf('<section class="monitor-portfolio"');
+  const servicesIndex = html.indexOf('<section class="diensten"');
+
   assert.ok(
-    html.indexOf('<section class="monitor-portfolio"') < html.indexOf('<section class="diensten"'),
-    'monitor hero precedes services',
+    heroIndex < portfolioIndex && portfolioIndex < servicesIndex,
+    'hero, monitor portfolio and services follow the intended order',
   );
-  assert.match(section, /<h1\s+class="monitor-hero__title"[^>]*>Verbinden doet versnellen\.<\/h1>/);
-  assert.match(section, /class="monitor-hero__portrait"[\s\S]*?src="img\/DaveHeel\.PNG"/);
-  assert.doesNotMatch(html, /<section\s+class="hero">/);
+  assert.match(html, /<section\s+class="hero">[\s\S]*?<h1\s+class="hero-title">Verbinden doet versnellen\.<\/h1>/);
+  assert.match(html, /<section\s+class="hero">[\s\S]*?class="hero-portret-img"/);
+  assert.match(section, /<h2\s+class="monitor-portfolio__title"[^>]*>Acht projecten\. Eén interactieve wand\.<\/h2>/);
+  assert.doesNotMatch(section, /monitor-hero__portrait|monitor-hero__copy/);
+});
+
+test('navbar remains transparent instead of changing on scroll', () => {
+  assert.match(html, /body\s*>\s*nav\s*\{[\s\S]*?background:\s*transparent;/);
+  assert.doesNotMatch(html, /nav\.style\.background/);
 });
 
 test('all monitor projects have local previews and live destinations', async () => {

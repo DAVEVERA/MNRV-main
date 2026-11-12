@@ -3,131 +3,570 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
   <title>Windows 95 Media Player</title>
   <style>
-    /* Reset & Fonts */
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
     @font-face {
-      font-family: 'Pixelated MS Sans Serif';
-      src: url('assets/audio/win95-media-player-master/example/src/ms-sans-serif.ttf');
+      font-family: "Pixelated MS Sans Serif";
+      src: url("assets/audio/win95-media-player-master/example/src/ms-sans-serif.ttf") format("truetype");
+      font-display: swap;
     }
 
-    body, html {
+    :root {
+      --chrome: #c0c0c0;
+      --light: #ffffff;
+      --mid: #808080;
+      --dark: #000000;
+      --navy: #000080;
+      --display: #06110a;
+      --display-text: #78ff78;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
       width: 100%;
       height: 100%;
-      background: #c0c0c0;
-      font-family: "Pixelated MS Sans Serif", "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Geneva, sans-serif;
-      font-size: 11px;
+      margin: 0;
       overflow: hidden;
-      -webkit-font-smoothing: none;
-      -moz-osx-font-smoothing: unset;
+      color: #000;
+      background: var(--chrome);
+      font-family: "Pixelated MS Sans Serif", "MS Sans Serif", Tahoma, sans-serif;
+      font-size: 11px;
     }
 
-    .player-wrapper {
-      display: flex;
-      flex-direction: column;
+    button, input { font: inherit; }
+    button { color: #000; }
+
+    .player {
+      display: grid;
+      grid-template-rows: auto auto auto minmax(150px, 1fr) auto;
+      gap: 7px;
       width: 100%;
       height: 100%;
-      background: #c0c0c0;
+      padding: 6px;
+      background: var(--chrome);
     }
 
-    /* Windows 95 Tab Bar Styling */
-    .playlist-tabs {
+    .menu-bar {
       display: flex;
-      background: #c0c0c0;
-      padding: 6px 8px 0 8px;
-      border-bottom: 2px solid #808080;
       gap: 2px;
-      flex-shrink: 0;
+      min-height: 20px;
+      align-items: center;
     }
 
-    .tab-btn {
-      background: #c0c0c0;
-      border: 2px solid;
-      border-color: #fff #808080 #c0c0c0 #fff; /* Win95 bevel */
-      border-bottom: none;
-      border-top-left-radius: 3px;
-      border-top-right-radius: 3px;
-      padding: 4px 12px;
-      font-family: "Pixelated MS Sans Serif", "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Geneva, sans-serif;
-      font-size: 11px;
-      cursor: pointer;
-      position: relative;
-      top: 2px;
-      z-index: 1;
-      color: #000;
+    .menu-button {
+      min-width: 54px;
+      padding: 3px 7px;
+      text-align: left;
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: default;
     }
 
-    .tab-btn:focus {
+    .menu-button:hover,
+    .menu-button:focus-visible {
+      color: #fff;
+      background: var(--navy);
       outline: none;
     }
 
-    .tab-btn.active {
-      background: #c0c0c0;
-      border-color: #fff #808080 #c0c0c0 #fff;
-      padding-bottom: 6px;
-      top: 0;
-      z-index: 2;
-      font-weight: bold;
+    .bevel-panel {
+      border: 2px solid;
+      border-color: var(--mid) var(--light) var(--light) var(--mid);
+      box-shadow: inset 1px 1px 0 var(--dark), inset -1px -1px 0 #dfdfdf;
     }
 
-    .player-container {
+    .display {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      gap: 10px;
+      min-height: 82px;
+      align-items: center;
       padding: 10px;
-      background: #c0c0c0;
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: auto;
+      color: var(--display-text);
+      background:
+        repeating-linear-gradient(0deg, rgba(120, 255, 120, 0.04) 0 1px, transparent 1px 3px),
+        var(--display);
     }
 
-    /* Override React95 styling to strip outer window boundaries */
-    .win95-player {
-      width: 100% !important;
-      max-width: 100% !important;
-      box-shadow: none !important;
-      border: none !important;
-      background: transparent !important;
-      padding: 0 !important;
-      margin: 0 !important;
+    .display-icon {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      color: #0b240f;
+      background: #78ff78;
+      border-radius: 50%;
+      box-shadow: 0 0 18px rgba(120, 255, 120, 0.3);
+      font-family: Arial, sans-serif;
+      font-size: 22px;
     }
 
-    .win95-player > div {
-      height: 100% !important;
+    .display-copy { min-width: 0; }
+
+    .track-title {
+      display: block;
+      overflow: hidden;
+      margin-bottom: 7px;
+      font-size: 13px;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    /* Hide the outer WindowHeader completely to avoid double titlebars */
-    .win95-player header,
-    .win95-player .win-titlebar,
-    .win95-player [class*="WindowHeader"] {
-      display: none !important;
+    .track-source {
+      overflow: hidden;
+      color: rgba(120, 255, 120, 0.68);
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    /* Remove border and shadow of the nested React95 Window */
-    .win95-player,
-    .win95-player [class*="Window"] {
-      border: none !important;
-      box-shadow: none !important;
-      background: transparent !important;
-      padding: 0 !important;
-      margin: 0 !important;
+    .time-readout {
+      min-width: 76px;
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
     }
 
-    /* Video area adjustments */
-    video {
-      background: #000 !important;
-      border: 2px inset #fff !important;
+    .transport {
+      display: grid;
+      grid-template-columns: repeat(7, 38px) minmax(110px, 1fr);
+      gap: 5px;
+      align-items: center;
+    }
+
+    .win-button {
+      min-width: 34px;
+      min-height: 31px;
+      padding: 4px 8px;
+      background: var(--chrome);
+      border: 2px solid;
+      border-color: var(--light) var(--dark) var(--dark) var(--light);
+      box-shadow: inset -1px -1px 0 var(--mid), inset 1px 1px 0 #dfdfdf;
+      cursor: pointer;
+    }
+
+    .win-button:active,
+    .win-button[aria-pressed="true"] {
+      padding: 5px 7px 3px 9px;
+      border-color: var(--dark) var(--light) var(--light) var(--dark);
+      box-shadow: inset 1px 1px 0 var(--mid);
+    }
+
+    .win-button:focus-visible,
+    .track-button:focus-visible,
+    input:focus-visible {
+      outline: 1px dotted #000;
+      outline-offset: -4px;
+    }
+
+    .transport-symbol {
+      font-family: Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .seek-wrap {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: center;
+      min-width: 0;
+      padding-left: 5px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 22px;
+      margin: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      background: #808080;
+      border: 1px solid;
+      border-color: #000 #fff #fff #000;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      width: 11px;
+      height: 22px;
+      margin-top: -9px;
+      appearance: none;
+      background: var(--chrome);
+      border: 2px solid;
+      border-color: #fff #000 #000 #fff;
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 4px;
+      background: #808080;
+      border: 1px solid;
+      border-color: #000 #fff #fff #000;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 9px;
+      height: 20px;
+      background: var(--chrome);
+      border: 2px solid;
+      border-color: #fff #000 #000 #fff;
+      border-radius: 0;
+    }
+
+    .playlist-panel {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      min-height: 0;
+      background: #fff;
+    }
+
+    .playlist-heading {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) 82px;
+      padding: 5px 7px;
+      color: #fff;
+      background: var(--navy);
+      border-bottom: 1px solid #000;
+    }
+
+    .playlist {
+      min-height: 0;
+      margin: 0;
+      padding: 2px;
+      overflow-y: auto;
+      list-style: none;
+      background: #fff;
+    }
+
+    .track-button {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) 82px;
+      width: 100%;
+      padding: 5px 7px;
+      text-align: left;
+      background: #fff;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .track-button:hover { background: #e7e7e7; }
+
+    .track-button[aria-current="true"] {
+      color: #fff;
+      background: var(--navy);
+    }
+
+    .track-name {
+      overflow: hidden;
+      padding-right: 8px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .track-type { text-align: right; }
+
+    .footer-controls {
+      display: grid;
+      grid-template-columns: auto minmax(90px, 180px) 1fr auto auto;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .volume-label { white-space: nowrap; }
+
+    .status {
+      min-width: 0;
+      padding: 4px 7px;
+      overflow: hidden;
+      background: var(--chrome);
+      border: 1px solid;
+      border-color: var(--mid) var(--light) var(--light) var(--mid);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .toggle-button { min-width: 68px; }
+
+    @media (max-width: 480px) {
+      .player { gap: 5px; padding: 4px; }
+      .display { grid-template-columns: 34px minmax(0, 1fr); min-height: 70px; padding: 7px; }
+      .display-icon { width: 32px; height: 32px; font-size: 18px; }
+      .time-readout { grid-column: 2; text-align: left; }
+      .transport { grid-template-columns: repeat(7, 1fr); }
+      .seek-wrap { grid-column: 1 / -1; padding: 0; }
+      .footer-controls { grid-template-columns: auto 1fr auto; }
+      .status { grid-column: 1 / -1; grid-row: 2; }
+      .toggle-button { min-width: 56px; }
     }
   </style>
 </head>
 <body>
-  <div id="app"></div>
+  <main class="player" aria-label="Windows 95 Media Player">
+    <nav class="menu-bar" aria-label="Mediaplayer-menu">
+      <button class="menu-button" type="button" data-menu="bestand"><u>B</u>estand</button>
+      <button class="menu-button" type="button" data-menu="afspelen"><u>A</u>fspelen</button>
+      <button class="menu-button" type="button" data-menu="help"><u>H</u>elp</button>
+    </nav>
 
-  <!-- Load bundled media player -->
-  <script src="assets/audio/mediaplayer.bundle.js"></script>
+    <section class="display bevel-panel" aria-live="polite">
+      <span class="display-icon" aria-hidden="true">♪</span>
+      <div class="display-copy">
+        <strong class="track-title" id="track-title">Selecteer een nummer</strong>
+        <div class="track-source" id="track-source">Windows 95 Media-voorbeelden</div>
+      </div>
+      <span class="time-readout"><span id="elapsed">0:00</span> / <span id="duration">0:00</span></span>
+    </section>
+
+    <section class="transport" aria-label="Afspeelbediening">
+      <button class="win-button" id="previous" type="button" aria-label="Vorig nummer" title="Vorig nummer"><span class="transport-symbol">|◀</span></button>
+      <button class="win-button" id="rewind" type="button" aria-label="Tien seconden terug" title="10 seconden terug"><span class="transport-symbol">◀◀</span></button>
+      <button class="win-button" id="play" type="button" aria-label="Afspelen" title="Afspelen"><span class="transport-symbol">▶</span></button>
+      <button class="win-button" id="pause" type="button" aria-label="Pauzeren" title="Pauzeren"><span class="transport-symbol">Ⅱ</span></button>
+      <button class="win-button" id="stop" type="button" aria-label="Stoppen" title="Stoppen"><span class="transport-symbol">■</span></button>
+      <button class="win-button" id="forward" type="button" aria-label="Tien seconden vooruit" title="10 seconden vooruit"><span class="transport-symbol">▶▶</span></button>
+      <button class="win-button" id="next" type="button" aria-label="Volgend nummer" title="Volgend nummer"><span class="transport-symbol">▶|</span></button>
+      <label class="seek-wrap">
+        <input id="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Positie in nummer">
+      </label>
+    </section>
+
+    <section class="playlist-panel bevel-panel" aria-labelledby="playlist-title">
+      <div class="playlist-heading" id="playlist-title">
+        <span>#</span>
+        <span>Windows 95 Media</span>
+        <span>Type</span>
+      </div>
+      <ol class="playlist" id="playlist"></ol>
+    </section>
+
+    <section class="footer-controls" aria-label="Extra afspeelinstellingen">
+      <label class="volume-label" for="volume">Volume</label>
+      <input id="volume" type="range" min="0" max="1" value="0.75" step="0.01">
+      <span class="status" id="status" role="status">Gereed</span>
+      <button class="win-button toggle-button" id="shuffle" type="button" aria-pressed="false">Shuffle</button>
+      <button class="win-button toggle-button" id="repeat" type="button" aria-pressed="false">Herhalen</button>
+    </section>
+  </main>
+
+  <audio id="audio" preload="metadata"></audio>
+
+  <script>
+    (() => {
+      const tracks = [
+        { title: 'The Microsoft Sound', file: 'The Microsoft Sound.mp3', type: 'WAV-conversie' },
+        { title: 'Windows 95 Startup Sound', file: 'Microsoft Windows 95 Startup Sound.mp3', type: 'WAV-conversie' },
+        { title: "Bach's Brandenburg Concerto No. 3", file: "Bach's Brandenburg Concerto No. 3.mp3", type: 'MIDI-conversie' },
+        { title: "Beethoven's 5th Symphony", file: "Beethoven's 5th Symphony.mp3", type: 'MIDI-conversie' },
+        { title: "Beethoven's Für Elise", file: "Beethoven's Fur Elise.mp3", type: 'MIDI-conversie' },
+        { title: 'Dance of the Sugar-Plum Fairy', file: 'Dance of the Sugar-Plum Fairy.mp3', type: 'MIDI-conversie' },
+        { title: "Debussy's Clair de Lune", file: "Debussy's Claire de Lune.mp3", type: 'MIDI-conversie' },
+        { title: 'In the Hall of the Mountain King', file: 'In the Hall of the Mountain King.mp3', type: 'MIDI-conversie' },
+        { title: "Mozart's Symphony No. 40", file: "Mozart's Symphony No. 40.mp3", type: 'MIDI-conversie' },
+      ].map((track) => ({
+        ...track,
+        url: `assets/audio/${encodeURIComponent(track.file)}`,
+      }));
+
+      const audio = document.getElementById('audio');
+      const playlist = document.getElementById('playlist');
+      const title = document.getElementById('track-title');
+      const source = document.getElementById('track-source');
+      const elapsed = document.getElementById('elapsed');
+      const duration = document.getElementById('duration');
+      const seek = document.getElementById('seek');
+      const volume = document.getElementById('volume');
+      const status = document.getElementById('status');
+      const playButton = document.getElementById('play');
+      const pauseButton = document.getElementById('pause');
+      const repeatButton = document.getElementById('repeat');
+      const shuffleButton = document.getElementById('shuffle');
+
+      let activeIndex = 0;
+      let repeat = false;
+      let shuffle = false;
+      let seeking = false;
+
+      const formatTime = (seconds) => {
+        if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+        const minutes = Math.floor(seconds / 60);
+        const remainder = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${minutes}:${remainder}`;
+      };
+
+      const setStatus = (message) => { status.textContent = message; };
+
+      const updateButtons = () => {
+        playButton.setAttribute('aria-pressed', audio.paused ? 'false' : 'true');
+        pauseButton.setAttribute('aria-pressed', audio.paused ? 'true' : 'false');
+      };
+
+      const renderPlaylist = () => {
+        playlist.replaceChildren(...tracks.map((track, index) => {
+          const item = document.createElement('li');
+          const button = document.createElement('button');
+          button.className = 'track-button';
+          button.type = 'button';
+          button.dataset.trackIndex = String(index);
+          button.setAttribute('aria-current', index === activeIndex ? 'true' : 'false');
+
+          const number = document.createElement('span');
+          number.textContent = String(index + 1).padStart(2, '0');
+          const name = document.createElement('span');
+          name.className = 'track-name';
+          name.textContent = track.title;
+          const type = document.createElement('span');
+          type.className = 'track-type';
+          type.textContent = track.type;
+
+          button.append(number, name, type);
+          item.append(button);
+          return item;
+        }));
+      };
+
+      const play = async () => {
+        try {
+          await audio.play();
+          setStatus(`Speelt af: ${tracks[activeIndex].title}`);
+        } catch (error) {
+          setStatus('Afspelen geblokkeerd. Klik nogmaals op Afspelen.');
+        }
+        updateButtons();
+      };
+
+      const loadTrack = (index, shouldPlay = false) => {
+        activeIndex = (index + tracks.length) % tracks.length;
+        const track = tracks[activeIndex];
+        audio.src = track.url;
+        audio.load();
+        title.textContent = track.title;
+        source.textContent = `Windows 95 Media · ${track.type}`;
+        elapsed.textContent = '0:00';
+        duration.textContent = '0:00';
+        seek.value = '0';
+        renderPlaylist();
+        setStatus(`Geladen: ${track.title}`);
+        if (shouldPlay) play();
+      };
+
+      const pause = () => {
+        audio.pause();
+        setStatus('Gepauzeerd');
+        updateButtons();
+      };
+
+      const stop = () => {
+        audio.pause();
+        audio.currentTime = 0;
+        setStatus('Gestopt');
+        updateButtons();
+      };
+
+      const nextIndex = () => {
+        if (!shuffle) return (activeIndex + 1) % tracks.length;
+        if (tracks.length < 2) return activeIndex;
+        let candidate = activeIndex;
+        while (candidate === activeIndex) candidate = Math.floor(Math.random() * tracks.length);
+        return candidate;
+      };
+
+      document.getElementById('previous').addEventListener('click', () => loadTrack(activeIndex - 1, !audio.paused));
+      document.getElementById('rewind').addEventListener('click', () => {
+        audio.currentTime = Math.max(0, audio.currentTime - 10);
+      });
+      playButton.addEventListener('click', play);
+      pauseButton.addEventListener('click', pause);
+      document.getElementById('stop').addEventListener('click', stop);
+      document.getElementById('forward').addEventListener('click', () => {
+        audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 10);
+      });
+      document.getElementById('next').addEventListener('click', () => loadTrack(nextIndex(), !audio.paused));
+
+      playlist.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-track-index]');
+        if (!button) return;
+        loadTrack(Number(button.dataset.trackIndex), true);
+      });
+
+      seek.addEventListener('pointerdown', () => { seeking = true; });
+      seek.addEventListener('pointerup', () => { seeking = false; });
+      seek.addEventListener('input', () => {
+        if (!Number.isFinite(audio.duration)) return;
+        audio.currentTime = (Number(seek.value) / 100) * audio.duration;
+      });
+
+      volume.addEventListener('input', () => {
+        audio.volume = Number(volume.value);
+        setStatus(`Volume: ${Math.round(audio.volume * 100)}%`);
+      });
+
+      repeatButton.addEventListener('click', () => {
+        repeat = !repeat;
+        repeatButton.setAttribute('aria-pressed', String(repeat));
+        setStatus(repeat ? 'Herhalen aan' : 'Herhalen uit');
+      });
+
+      shuffleButton.addEventListener('click', () => {
+        shuffle = !shuffle;
+        shuffleButton.setAttribute('aria-pressed', String(shuffle));
+        setStatus(shuffle ? 'Shuffle aan' : 'Shuffle uit');
+      });
+
+      document.querySelectorAll('[data-menu]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const menu = button.dataset.menu;
+          if (menu === 'afspelen') play();
+          if (menu === 'bestand') setStatus('Selecteer een nummer in de afspeellijst.');
+          if (menu === 'help') setStatus('Spatie: afspelen/pauzeren · pijltjes: zoeken · M: dempen');
+        });
+      });
+
+      audio.addEventListener('loadedmetadata', () => {
+        duration.textContent = formatTime(audio.duration);
+      });
+
+      audio.addEventListener('timeupdate', () => {
+        elapsed.textContent = formatTime(audio.currentTime);
+        if (!seeking && Number.isFinite(audio.duration) && audio.duration > 0) {
+          seek.value = String((audio.currentTime / audio.duration) * 100);
+        }
+      });
+
+      audio.addEventListener('play', updateButtons);
+      audio.addEventListener('pause', updateButtons);
+      audio.addEventListener('error', () => {
+        setStatus('Dit audiobestand kon niet worden geladen.');
+        updateButtons();
+      });
+      audio.addEventListener('ended', () => {
+        if (repeat) {
+          audio.currentTime = 0;
+          play();
+          return;
+        }
+        loadTrack(nextIndex(), true);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.target.matches('button, input')) return;
+        if (event.code === 'Space') {
+          event.preventDefault();
+          audio.paused ? play() : pause();
+        }
+        if (event.key === 'ArrowLeft') audio.currentTime = Math.max(0, audio.currentTime - 5);
+        if (event.key === 'ArrowRight') audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5);
+        if (event.key.toLowerCase() === 'm') {
+          audio.muted = !audio.muted;
+          setStatus(audio.muted ? 'Geluid gedempt' : 'Geluid aan');
+        }
+      });
+
+      audio.volume = Number(volume.value);
+      loadTrack(0);
+    })();
+  </script>
 </body>
 </html>
