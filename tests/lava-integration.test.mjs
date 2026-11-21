@@ -198,3 +198,30 @@ test('index.html starts LAVA when it is opened with ?lava=1', () => {
   assert.match(clientJs, /lava=1|['"]lava['"]/);
   assert.match(clientJs, /URLSearchParams|location\.search/);
 });
+
+const sessionSrc = await readFile(new URL('../api/lava/session.mjs', import.meta.url), 'utf8');
+
+test('the browser client reads the field names the session endpoint actually returns', () => {
+  // Cross-file contract: the endpoint and the client are written apart, and a
+  // renamed key here is invisible until a live call hands the SDK undefined.
+  const success = sessionSrc.match(/sendJson\(res,\s*200,\s*\{([^}]*)\}/);
+  assert.ok(success, 'the session endpoint must have a 200 payload');
+  const returned = success[1]
+    .split(',')
+    .map((part) => part.trim().split(':')[0].trim())
+    .filter(Boolean);
+
+  const destructure = clientJs.match(/const\s*\{([^}]*)\}\s*=\s*await\s+mintToken\(\)/);
+  assert.ok(destructure, 'the client must destructure the session response');
+  const read = destructure[1]
+    .split(',')
+    .map((part) => part.trim().split(':')[0].trim())
+    .filter(Boolean);
+
+  for (const name of read) {
+    assert.ok(
+      returned.includes(name),
+      `the client reads "${name}" but /api/lava/session returns {${returned.join(', ')}}`,
+    );
+  }
+});

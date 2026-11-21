@@ -362,10 +362,12 @@ async function start() {
   setOrb('idle');
 
   try {
-    const { conversationToken } = await mintToken();
+    // /api/lava/session answers { token, agentId }; the SDK wants the token
+    // under conversationToken.
+    const { token } = await mintToken();
     const { Conversation } = await import(SDK_URL);
     state.conversation = await Conversation.startSession({
-      conversationToken,
+      conversationToken: token,
       connectionType: 'webrtc',
       clientTools: { update_notes, show_appointment },
       onConnect: () => {
