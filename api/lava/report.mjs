@@ -42,6 +42,14 @@ async function readBody(req) {
 
 const adminEmail = () => process.env.INTAKE_ADMIN_EMAIL || 'info@mnrv.nl';
 
+// Dave sorts his inbox by subject; a reconstruction must say so there too,
+// not only in the body note the renderers add.
+function subjectFor(report) {
+  return report.ending === 'fallback'
+    ? `LAVA intake (achteraf samengesteld) — ${report.naam}`
+    : `LAVA intake — ${report.naam}`;
+}
+
 function icsFor(appointment, report, now) {
   return buildIcs(
     {
@@ -93,6 +101,9 @@ export async function deliverReport(
     claimReport: claimReportImpl = claimReport,
     releaseReport: releaseReportImpl = releaseReport,
     sendMail: sendMailImpl = sendMail,
+    // The post-call fallback claims first so a conversation LAVA already
+    // reported never costs an extraction call; it then passes the claim in.
+    claimed = false,
   } = {},
 ) {
   if (typeof conversationId !== 'string' || conversationId.trim() === '') {
@@ -106,7 +117,7 @@ export async function deliverReport(
   const current = now();
 
   const store = createStoreClientImpl();
-  const won = await claimReportImpl(conversationId, store);
+  const won = claimed || (await claimReportImpl(conversationId, store));
   if (!won) {
     return { status: 200, payload: { ok: true, mailed: false, reason: 'already_sent' } };
   }
@@ -120,7 +131,7 @@ export async function deliverReport(
   try {
     await sendMailImpl({
       to: [adminEmail()],
-      subject: `LAVA intake — ${report.naam}`,
+      subject: subjectFor(report),
       html: renderReportHtml(report),
       text: renderReportText(report),
       attachments,

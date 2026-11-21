@@ -1,6 +1,6 @@
 // --- google.mjs (Task 4) ---
 import assert from 'node:assert/strict';
-import { createHash, createVerify, generateKeyPairSync } from 'node:crypto';
+import { createHash, createHmac, createVerify, generateKeyPairSync } from 'node:crypto';
 import test from 'node:test';
 
 import { createAvailabilityHandler } from '../api/lava/availability.mjs';
@@ -8,6 +8,7 @@ import { createBookHandler } from '../api/lava/book.mjs';
 import sessionHandler from '../api/lava/session.mjs';
 import { createReportHandler } from '../api/lava/report.mjs';
 import { sendMail } from '../api/lava/_lib/mail.mjs';
+import { createPostCallHandler, extractReport } from '../api/lava/post-call.mjs';
 
 import {
   countLavaEventsPerDay,
@@ -35,6 +36,11 @@ const ENV_KEYS = [
   'TURNSTILE_SECRET_KEY',
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
+  'ELEVENLABS_WEBHOOK_SECRET',
+  'ANTHROPIC_API_KEY',
+  'RESEND_API_KEY',
+  'INTAKE_FROM_EMAIL',
+  'INTAKE_ADMIN_EMAIL',
 ];
 
 // Runs fn with a controlled Google environment, then restores the previous one.
@@ -1235,5 +1241,246 @@ test('sendMail throws when RESEND_API_KEY is absent instead of posting unauthent
       /RESEND_API_KEY/,
     );
     assert.equal(called, false);
+  });
+});
+
+// --- post-call.mjs (Task 10) ---
+
+const WEBHOOK_SECRET = 'wh-secret';
+const POST_CALL_NOW = new Date('2026-10-19T08:00:00.000Z');
+
+const TRANSCRIPT_TURNS = [
+  { role: 'agent', message: 'Je spreekt met LAVA van MNRV.' },
+  { role: 'user', message: 'Onze planning kost te veel handwerk.' },
+  { role: 'agent', message: 'Hoe ziet dat er nu uit?' },
+  { role: 'user', message: 'Alles met de hand in Excel. Ik ben Mark, mark@example.nl.' },
+];
+
+const postCallBody = (overrides = {}) =>
+  JSON.stringify({
+    type: 'post_call_transcription',
+    event_timestamp: Math.floor(POST_CALL_NOW.getTime() / 1000),
+    data: {
+      agent_id: 'agent-1',
+      conversation_id: 'conv-789',
+      status: 'done',
+      transcript: TRANSCRIPT_TURNS,
+      ...overrides,
+    },
+  });
+
+function signPostCall(rawBody, { secret = WEBHOOK_SECRET, timestamp } = {}) {
+  const t = timestamp ?? Math.floor(POST_CALL_NOW.getTime() / 1000);
+  const digest = createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
+  return `t=${t},v0=${digest}`;
+}
+
+// The extracted report the stubbed Claude call returns.
+const EXTRACTED = {
+  naam: 'Mark de Wit',
+  email: 'mark@example.nl',
+  label: 'binnen_de_lijnen',
+  uitdaging: 'Onze planning kost te veel handwerk.',
+  beoogde_oplossing: 'Automatisering van de planning.',
+  ending: 'fallback',
+};
+
+async function runPostCall({
+  rawBody = postCallBody(),
+  signature,
+  claimResult = true,
+  extracted = EXTRACTED,
+  extractError,
+} = {}) {
+  const events = [];
+  const handler = createPostCallHandler({
+    now: () => POST_CALL_NOW,
+    createStoreClient: () => ({ kind: 'fake-store' }),
+    claimReport: async (conversationId) => {
+      events.push({ kind: 'claim', conversationId });
+      return claimResult;
+    },
+    releaseReport: async (conversationId) => {
+      events.push({ kind: 'release', conversationId });
+    },
+    extractReport: async (transcriptText) => {
+      events.push({ kind: 'extract', transcriptText });
+      if (extractError) throw extractError;
+      return extracted;
+    },
+    sendMail: async (payload) => {
+      events.push({ kind: 'mail', payload });
+      return { id: 'mail-1' };
+    },
+  });
+  const req = {
+    method: 'POST',
+    headers: { 'elevenlabs-signature': signature ?? signPostCall(rawBody) },
+    body: rawBody,
+  };
+  const res = fakeRes();
+  await handler(req, res);
+  const mails = events.filter((e) => e.kind === 'mail').map((e) => e.payload);
+  return { res, json: res.body ? JSON.parse(res.body) : undefined, events, mails };
+}
+
+test('post-call returns 401 on a bad signature', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const raw = postCallBody();
+    const r = await runPostCall({
+      rawBody: raw,
+      signature: signPostCall(raw, { secret: 'the-wrong-secret' }),
+    });
+    assert.equal(r.res.statusCode, 401);
+    assert.equal(r.events.length, 0, 'an unverified webhook must not claim or mail');
+  });
+});
+
+test('post-call rejects a replayed webhook whose timestamp is outside the tolerance', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const raw = postCallBody();
+    const stale = Math.floor(POST_CALL_NOW.getTime() / 1000) - 60 * 60;
+    const r = await runPostCall({ rawBody: raw, signature: signPostCall(raw, { timestamp: stale }) });
+    assert.equal(r.res.statusCode, 401);
+    assert.equal(r.events.length, 0);
+  });
+});
+
+test('post-call rejects a body that was altered after signing', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const signed = postCallBody();
+    const tampered = postCallBody({ conversation_id: 'conv-attacker' });
+    const r = await runPostCall({ rawBody: tampered, signature: signPostCall(signed) });
+    assert.equal(r.res.statusCode, 401);
+    assert.equal(r.events.length, 0);
+  });
+});
+
+test('post-call does nothing when the conversation was already claimed by the report tool', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const r = await runPostCall({ claimResult: false });
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { ok: true, mailed: false, reason: 'already_sent' });
+    assert.equal(r.mails.length, 0);
+    assert.ok(
+      !r.events.some((e) => e.kind === 'extract'),
+      'claiming first must spare the Claude call when LAVA already reported',
+    );
+  });
+});
+
+test('post-call composes a report from the transcript when nothing was claimed', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const r = await runPostCall();
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { ok: true, mailed: true });
+
+    const extract = r.events.find((e) => e.kind === 'extract');
+    assert.ok(extract, 'the transcript must reach the extractor');
+    assert.match(extract.transcriptText, /Onze planning kost te veel handwerk/);
+    assert.match(extract.transcriptText, /mark@example\.nl/);
+
+    const admin = r.mails.find((m) => m.to.includes('info@mnrv.nl'));
+    assert.ok(admin, 'Dave must still get the lead');
+    assert.match(admin.html, /Onze planning kost te veel handwerk/);
+  });
+});
+
+test('post-call marks a fallback report as such in the subject', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const r = await runPostCall();
+    const admin = r.mails.find((m) => m.to.includes('info@mnrv.nl'));
+    assert.match(admin.subject, /achteraf samengesteld/i);
+    assert.match(admin.html, /achteraf samengesteld uit het transcript/i);
+  });
+});
+
+test('post-call never books an appointment', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const r = await runPostCall();
+    for (const mail of r.mails) {
+      assert.ok(
+        !mail.attachments || mail.attachments.length === 0,
+        'a reconstructed report has no appointment, so it carries no invitation',
+      );
+    }
+    assert.equal(
+      r.mails.find((m) => m.to.includes('mark@example.nl')),
+      undefined,
+      'the visitor gets nothing from the fallback path',
+    );
+  });
+});
+
+test('post-call forces the fallback ending even if the extractor claims another one', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const r = await runPostCall({ extracted: { ...EXTRACTED, ending: 'appointment' } });
+    const admin = r.mails.find((m) => m.to.includes('info@mnrv.nl'));
+    assert.match(admin.subject, /achteraf samengesteld/i);
+    assert.match(admin.html, /achteraf samengesteld uit het transcript/i);
+  });
+});
+
+test('post-call releases the claim when the extraction fails so nothing is lost silently', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const r = await runPostCall({ extractError: new Error('anthropic down') });
+    assert.equal(r.res.statusCode, 502);
+    assert.ok(r.events.some((e) => e.kind === 'release' && e.conversationId === 'conv-789'));
+    assert.equal(r.mails.length, 0);
+  });
+});
+
+test('post-call returns 503 when the webhook secret is not configured, rather than trusting the caller', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: undefined }, async () => {
+    const r = await runPostCall();
+    assert.equal(r.res.statusCode, 503);
+    assert.equal(r.events.length, 0);
+  });
+});
+
+test('extractReport asks Claude for strings only and returns the parsed report', async () => {
+  await withEnv({ ANTHROPIC_API_KEY: 'sk-test' }, async () => {
+    const calls = [];
+    const fetchImpl = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return json({
+        content: [{ type: 'text', text: JSON.stringify(EXTRACTED) }],
+      });
+    };
+    const result = await extractReport('LAVA: hoi\nMark: hoi', fetchImpl);
+    assert.equal(result.naam, 'Mark de Wit');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'https://api.anthropic.com/v1/messages');
+    assert.equal(calls[0].init.headers['x-api-key'], 'sk-test');
+    const sent = JSON.parse(calls[0].init.body);
+    assert.match(sent.model, /^claude-/);
+    // Task 3 ruling: a non-string field is silently dropped downstream, so the
+    // prompt has to forbid them at the source.
+    assert.match(JSON.stringify(sent.messages), /string/i);
+  });
+});
+
+test('extractReport drops non-string fields the model returns anyway', async () => {
+  await withEnv({ ANTHROPIC_API_KEY: 'sk-test' }, async () => {
+    const fetchImpl = async () =>
+      json({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ ...EXTRACTED, uitdaging: ['een', 'lijst'], verwachting: 42 }),
+          },
+        ],
+      });
+    const result = await extractReport('x', fetchImpl);
+    assert.equal(result.uitdaging, undefined);
+    assert.equal(result.verwachting, undefined);
+    assert.equal(result.naam, 'Mark de Wit');
+  });
+});
+
+test('extractReport throws when Claude refuses so the caller releases the claim', async () => {
+  await withEnv({ ANTHROPIC_API_KEY: 'sk-test' }, async () => {
+    const fetchImpl = async () => json({ error: 'overloaded' }, 529);
+    await assert.rejects(() => extractReport('x', fetchImpl), /529/);
   });
 });
