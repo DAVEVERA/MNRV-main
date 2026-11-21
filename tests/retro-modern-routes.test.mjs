@@ -34,7 +34,9 @@ test('reported iframe and Clippy diagnostics stay removed', () => {
   assert.doesNotMatch(indexHtml, /agent\.mute\s*\(/);
   assert.doesNotMatch(indexHtml, /omnicontent\.nl/i);
   assert.doesNotMatch(vercelConfig, /omnicontent\.nl/i);
-  assert.match(indexHtml, /class="win-btn lava-modern-link" href="assets\/mnrv\.html#contact"/);
+  // Task 12 replaced the placeholder panel (and its lava-modern-link) with the
+  // agent itself; tests/lava-integration.test.mjs now owns that window.
+  assert.match(indexHtml, /id="lava-window"/);
 
   const intakeFrame = modernHtml.match(/<iframe\s+id="intake-frame"[^>]*>/i)?.[0];
   assert.ok(intakeFrame, 'modern intake iframe is present');

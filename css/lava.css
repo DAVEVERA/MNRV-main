@@ -1,0 +1,175 @@
+/* ============================================
+   LAVA.exe — the spoken intake agent
+   Uses only the Win98 palette already declared in css/style.css.
+   ============================================ */
+
+.lava-window-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 14px;
+  text-align: center;
+}
+
+/* --- the orb ------------------------------------------------ */
+
+.lava-orb {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--win-titlebar);
+  border: 2px solid var(--win-btn-dark);
+  box-shadow: inset -2px -2px 0 var(--win-btn-shadow), inset 2px 2px 0 var(--win-btn-highlight);
+  transition: transform 120ms linear;
+}
+
+.lava-orb[data-state='listening'] {
+  background: var(--win-bg);
+}
+
+.lava-orb[data-state='speaking'] {
+  background: var(--win-titlebar);
+}
+
+.lava-orb[data-state='idle'] {
+  background: var(--win-titlebar-inactive);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lava-orb {
+    transition: none;
+  }
+}
+
+/* --- VU meter ----------------------------------------------- */
+
+.lava-meter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 34px;
+  padding: 3px;
+  background: var(--win-input-bg);
+  border: 2px inset var(--win-btn-shadow);
+}
+
+.lava-meter-bar {
+  flex: 1 1 0;
+  min-height: 2px;
+  height: 2px;
+  background: var(--win-titlebar);
+}
+
+/* --- transcript line ---------------------------------------- */
+
+.lava-line {
+  min-height: 2.6em;
+  width: 100%;
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--win-input-bg);
+  border: 2px inset var(--win-btn-shadow);
+  color: var(--win-text);
+  font-family: var(--font-main);
+  font-size: 12px;
+  text-align: left;
+}
+
+.lava-status {
+  margin: 0;
+  color: var(--win-text);
+  font-family: var(--font-main);
+  font-size: 11px;
+}
+
+.lava-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+
+/* --- notes window ------------------------------------------- */
+
+.lava-notes-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.lava-notes-heading {
+  margin: 0;
+  color: var(--win-text);
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.lava-notes-text {
+  margin: 0;
+  padding: 6px 8px;
+  min-height: 3em;
+  background: var(--win-input-bg);
+  border: 2px inset var(--win-btn-shadow);
+  color: var(--win-text);
+  font-family: var(--font-main);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.lava-notes-empty {
+  color: var(--win-titlebar-inactive);
+}
+
+/* --- appointment window ------------------------------------- */
+
+.lava-appointment-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  text-align: center;
+}
+
+.lava-appointment-label {
+  margin: 0;
+  color: var(--win-text);
+  font-family: var(--font-main);
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* --- overlay shell (mobile and the modern route) ------------- */
+
+.lava-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--win-btn-dark);
+}
+
+.lava-overlay.is-open {
+  display: flex;
+}
+
+.lava-overlay .win-window {
+  position: static;
+  width: 100%;
+  max-width: 420px;
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .lava-orb {
+    width: 64px;
+    height: 64px;
+  }
+}

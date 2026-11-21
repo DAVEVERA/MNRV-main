@@ -152,6 +152,7 @@
   }
   </script>
 
+  <link rel="stylesheet" href="css/lava.css">
   <link rel="stylesheet" href="components/cookie-banner.css">
   <script src="components/cookie-banner.js" defer></script>
 
@@ -346,20 +347,70 @@
         <button class="win-titlebar-btn close-btn" title="Sluiten">X</button>
       </div>
     </div>
-    <div class="win-addressbar">
-      <label>Adres:</label>
-      <input type="text" value="assets/mnrv.html#contact" readonly class="win-input" title="My LAVA adres" placeholder="Adres">
-    </div>
     <div class="win-body lava-window-body">
-      <div class="lava-local-panel">
-        <img src="assets/icons/Computer_32x32_4.png" alt="" width="32" height="32" draggable="false">
-        <h2>My LAVA</h2>
-        <p>Open de moderne MNRV-route om een project te starten.</p>
-        <a class="win-btn lava-modern-link" href="assets/mnrv.html#contact">Open moderne route</a>
+      <div id="lava-orb" class="lava-orb" data-state="idle" aria-hidden="true"></div>
+      <div id="lava-meter" class="lava-meter" role="presentation" aria-hidden="true"></div>
+      <p id="lava-line" class="lava-line" aria-live="polite"></p>
+      <p id="lava-status" class="lava-status" role="status">Gereed</p>
+      <div class="lava-actions">
+        <button type="button" id="lava-start" class="win-btn">Start gesprek</button>
+        <button type="button" id="lava-pause" class="win-btn">Pauzeer</button>
+        <button type="button" id="lava-end" class="win-btn">Beëindig gesprek</button>
       </div>
     </div>
     <div class="win-statusbar">
       <span class="win-statusbar-section">Gereed</span>
+      <span class="win-statusbar-section">MNRV</span>
+    </div>
+  </div>
+
+  <!-- ============================================
+       LAVA — WAT LAVA BEGRIJPT
+       ============================================ -->
+  <div id="lava-notes-window" class="win-window hidden lava-notes-window">
+    <div class="win-titlebar">
+      <img class="win-titlebar-icon" src="assets/icons/Notepad_32x32_4.png" alt="" draggable="false">
+      <span class="win-titlebar-title">Wat LAVA begrijpt</span>
+      <div class="win-titlebar-buttons">
+        <button class="win-titlebar-btn min-btn" title="Minimaliseren">_</button>
+        <button class="win-titlebar-btn max-btn" title="Maximaliseren">&#9633;</button>
+        <button class="win-titlebar-btn close-btn" title="Sluiten">X</button>
+      </div>
+    </div>
+    <div class="win-body lava-notes-body">
+      <h3 class="lava-notes-heading">Wat LAVA begrijpt</h3>
+      <p id="lava-notes-understood" class="lava-notes-text lava-notes-empty" aria-live="polite">Nog niets genoteerd.</p>
+      <h3 class="lava-notes-heading">Open vragen</h3>
+      <p id="lava-notes-open" class="lava-notes-text lava-notes-empty" aria-live="polite">Nog niets genoteerd.</p>
+      <div class="lava-actions">
+        <button type="button" id="lava-notes-wrong" class="win-btn">Dit klopt niet</button>
+      </div>
+    </div>
+    <div class="win-statusbar">
+      <span class="win-statusbar-section">LAVA</span>
+    </div>
+  </div>
+
+  <!-- ============================================
+       LAVA — AFSPRAAK
+       ============================================ -->
+  <div id="lava-appointment-window" class="win-window hidden lava-appointment-window">
+    <div class="win-titlebar">
+      <img class="win-titlebar-icon" src="assets/icons/w2k_cd_player.ico" alt="" draggable="false">
+      <span class="win-titlebar-title">Afspraak</span>
+      <div class="win-titlebar-buttons">
+        <button class="win-titlebar-btn min-btn" title="Minimaliseren">_</button>
+        <button class="win-titlebar-btn max-btn" title="Maximaliseren">&#9633;</button>
+        <button class="win-titlebar-btn close-btn" title="Sluiten">X</button>
+      </div>
+    </div>
+    <div class="win-body lava-appointment-body">
+      <p id="lava-appointment-label" class="lava-appointment-label"></p>
+      <div class="lava-actions">
+        <button type="button" id="lava-appointment-download" class="win-btn">Uitnodiging ophalen</button>
+      </div>
+    </div>
+    <div class="win-statusbar">
       <span class="win-statusbar-section">MNRV</span>
     </div>
   </div>
@@ -641,6 +692,7 @@
 
 <script src="js/retro-apps.js"></script>
 <script src="js/main.js"></script>
+<script type="module" src="js/lava/index.mjs"></script>
 <script>
   (function() {
     var frame;
