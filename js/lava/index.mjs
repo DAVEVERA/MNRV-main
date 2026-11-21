@@ -4,6 +4,13 @@
 // the ElevenLabs agent, and renders three Win98 windows: the agent itself, the
 // live "Wat LAVA begrijpt" notes, and the booked appointment.
 //
+// Two shells (see shell.mjs):
+//   window  — the draggable Win98 windows on the retro desktop at >=768px
+//   overlay — one centred panel, notes as a collapsible strip, used on phones
+//             and on the modern route at /assets/mnrv.html
+// The overlay REUSES the same markup: the panel is moved into the overlay
+// container rather than duplicated, so there is one set of ids on every page.
+//
 // The server tools (availability, book, report) are called by the agent, not
 // from here. The browser only registers the two CLIENT tools the agent invokes
 // to drive this UI.
@@ -17,6 +24,8 @@ const SDK_URL = 'https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.37.1/+esm';
 
 const BAR_COUNT = 12;
 const SESSION_ENDPOINT = '/api/lava/session';
+// Opened in a new tab when LAVA is started from inside the sandboxed iframe.
+const BREAKOUT_URL = '/index.html?lava=1';
 
 const TEXT = {
   full: 'LAVA zit vandaag vol. Vul het formulier in of mail ons.',
@@ -32,6 +41,21 @@ const TEXT = {
 };
 
 const $ = (id) => document.getElementById(id);
+
+/**
+ * assets/mnrv.html is also served inside the sandboxed iframe at
+ * portfolio.html:153. That sandbox has no allow-same-origin, so the document is
+ * an opaque origin and getUserMedia can never succeed there. The sandbox does
+ * allow popups, so LAVA breaks out into a real tab instead of failing quietly.
+ */
+function inSandboxedFrame() {
+  try {
+    return window.self !== window.top;
+  } catch {
+    // A cross-origin parent throws on access, which is itself the answer.
+    return true;
+  }
+}
 
 function showWindow(id) {
   if (window.MNRV && typeof window.MNRV.showWindow === 'function') {
@@ -51,6 +75,80 @@ function hideWindow(id) {
   if (el) el.classList.add('hidden');
 }
 
+// --- markup ---------------------------------------------------
+
+// The retro desktop ships these windows in index.html. Every other page gets
+// them injected, so the ids and the client stay identical across shells.
+const PANEL_HTML = `
+  <div id="lava-window" class="win-window hidden lava-window">
+    <div class="win-titlebar">
+      <span class="win-titlebar-title">LAVA.exe</span>
+      <div class="win-titlebar-buttons">
+        <button type="button" class="win-titlebar-btn close-btn" id="lava-overlay-close" title="Sluiten">X</button>
+      </div>
+    </div>
+    <div class="win-body lava-window-body">
+      <div id="lava-orb" class="lava-orb" data-state="idle" aria-hidden="true"></div>
+      <div id="lava-meter" class="lava-meter" role="presentation" aria-hidden="true"></div>
+      <p id="lava-line" class="lava-line" aria-live="polite"></p>
+      <p id="lava-status" class="lava-status" role="status">Gereed</p>
+      <div class="lava-actions">
+        <button type="button" id="lava-start" class="win-btn">Start gesprek</button>
+        <button type="button" id="lava-pause" class="win-btn">Pauzeer</button>
+        <button type="button" id="lava-end" class="win-btn">Beëindig gesprek</button>
+      </div>
+    </div>
+  </div>
+  <div id="lava-notes-window" class="win-window hidden lava-notes-window">
+    <div class="win-titlebar">
+      <span class="win-titlebar-title">Wat LAVA begrijpt</span>
+      <div class="win-titlebar-buttons">
+        <button type="button" class="win-titlebar-btn close-btn" title="Sluiten">X</button>
+      </div>
+    </div>
+    <div class="win-body lava-notes-body">
+      <h3 class="lava-notes-heading">Wat LAVA begrijpt</h3>
+      <p id="lava-notes-understood" class="lava-notes-text lava-notes-empty" aria-live="polite">Nog niets genoteerd.</p>
+      <h3 class="lava-notes-heading">Open vragen</h3>
+      <p id="lava-notes-open" class="lava-notes-text lava-notes-empty" aria-live="polite">Nog niets genoteerd.</p>
+      <div class="lava-actions">
+        <button type="button" id="lava-notes-wrong" class="win-btn">Dit klopt niet</button>
+      </div>
+    </div>
+  </div>
+  <div id="lava-appointment-window" class="win-window hidden lava-appointment-window">
+    <div class="win-titlebar">
+      <span class="win-titlebar-title">Afspraak</span>
+      <div class="win-titlebar-buttons">
+        <button type="button" class="win-titlebar-btn close-btn" title="Sluiten">X</button>
+      </div>
+    </div>
+    <div class="win-body lava-appointment-body">
+      <p id="lava-appointment-label" class="lava-appointment-label"></p>
+      <div class="lava-actions">
+        <button type="button" id="lava-appointment-download" class="win-btn">Uitnodiging ophalen</button>
+      </div>
+    </div>
+  </div>
+`;
+
+function ensureMarkup() {
+  if (!$('lava-overlay')) {
+    const overlay = document.createElement('div');
+    overlay.id = 'lava-overlay';
+    overlay.className = 'lava-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', 'LAVA');
+    overlay.innerHTML = '<div class="lava-overlay-panel"></div>';
+    document.body.appendChild(overlay);
+  }
+  if (!$('lava-window')) {
+    const host = document.createElement('div');
+    host.innerHTML = PANEL_HTML;
+    while (host.firstElementChild) document.body.appendChild(host.firstElementChild);
+  }
+}
+
 // --- notes ----------------------------------------------------
 
 const notes = createNotesModel();
@@ -67,7 +165,14 @@ function renderNotes() {
     open.textContent = view.open || TEXT.notesEmpty;
     open.classList.toggle('lava-notes-empty', !view.open);
   }
-  if (view.hasContent) showWindow('lava-notes-window');
+  if (!view.hasContent) return;
+  if (currentShell() === 'overlay') {
+    // In the overlay there is no second floating window: the notes sit as a
+    // strip under the panel.
+    $('lava-notes-window')?.classList.remove('hidden');
+  } else {
+    showWindow('lava-notes-window');
+  }
 }
 
 // --- meter ----------------------------------------------------
@@ -82,6 +187,16 @@ function renderMeter(bars) {
   }
 }
 
+function buildMeter() {
+  const meter = $('lava-meter');
+  if (!meter || meter.children.length > 0) return;
+  for (let i = 0; i < BAR_COUNT; i += 1) {
+    const bar = document.createElement('span');
+    bar.className = 'lava-meter-bar';
+    meter.appendChild(bar);
+  }
+}
+
 // --- the session ----------------------------------------------
 
 const state = {
@@ -90,6 +205,8 @@ const state = {
   starting: false,
   paused: false,
 };
+
+const currentShell = () => pickShell(window.innerWidth, window.location.pathname);
 
 function setStatus(text) {
   const el = $('lava-status');
@@ -174,33 +291,70 @@ function show_appointment({ label, icsText } = {}) {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      // Give the download a tick before the URL is revoked.
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
   }
-  showWindow('lava-appointment-window');
+  if (currentShell() === 'overlay') $('lava-appointment-window')?.classList.remove('hidden');
+  else showWindow('lava-appointment-window');
   return 'ok';
 }
 
-// --- lifecycle ------------------------------------------------
+// --- shells ---------------------------------------------------
 
 function openShell() {
-  const shell = pickShell(window.innerWidth, window.location.pathname);
-  if (shell === 'overlay') {
-    const overlay = $('lava-overlay');
-    if (overlay) overlay.classList.add('is-open');
+  ensureMarkup();
+  buildMeter();
+  const overlay = $('lava-overlay');
+  const panel = overlay?.querySelector('.lava-overlay-panel');
+  const win = $('lava-window');
+  const notesWin = $('lava-notes-window');
+
+  if (currentShell() === 'overlay') {
+    if (panel && win && win.parentElement !== panel) {
+      panel.appendChild(win);
+      if (notesWin) {
+        notesWin.classList.add('lava-notes-strip');
+        panel.appendChild(notesWin);
+      }
+    }
+    overlay?.classList.add('is-open');
+    win?.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    return;
   }
+
+  // Retro desktop: hand the window back to main.js.
+  if (win && overlay && overlay.contains(win)) {
+    document.body.appendChild(win);
+    if (notesWin) {
+      notesWin.classList.remove('lava-notes-strip');
+      document.body.appendChild(notesWin);
+    }
+  }
+  overlay?.classList.remove('is-open');
+  document.body.style.overflow = '';
   showWindow('lava-window');
 }
 
 function closeShell() {
   const overlay = $('lava-overlay');
-  if (overlay) overlay.classList.remove('is-open');
+  overlay?.classList.remove('is-open');
+  document.body.style.overflow = '';
   hideWindow('lava-window');
   hideWindow('lava-notes-window');
+  $('lava-window')?.classList.add('hidden');
+  $('lava-notes-window')?.classList.add('hidden');
 }
 
+// --- lifecycle ------------------------------------------------
+
 async function start() {
+  // Inside the sandboxed portfolio iframe the microphone can never be granted,
+  // so open the real desktop in a tab and let it start LAVA there.
+  if (inSandboxedFrame()) {
+    window.open(BREAKOUT_URL, '_blank', 'noopener');
+    return;
+  }
   if (state.conversation || state.starting) return;
   state.starting = true;
   openShell();
@@ -267,7 +421,6 @@ function togglePause() {
   if (!conversation) return;
   state.paused = !state.paused;
   try {
-    // The SDK mutes the microphone; LAVA keeps the session open.
     conversation.setMicMuted?.(state.paused);
   } catch (err) {
     console.error('LAVA could not toggle the microphone:', err);
@@ -289,14 +442,9 @@ function sendCorrection() {
 // --- wiring ---------------------------------------------------
 
 function wire() {
-  const meter = $('lava-meter');
-  if (meter && meter.children.length === 0) {
-    for (let i = 0; i < BAR_COUNT; i += 1) {
-      const bar = document.createElement('span');
-      bar.className = 'lava-meter-bar';
-      meter.appendChild(bar);
-    }
-  }
+  ensureMarkup();
+  buildMeter();
+
   $('lava-start')?.addEventListener('click', start);
   $('lava-pause')?.addEventListener('click', togglePause);
   $('lava-end')?.addEventListener('click', stop);
@@ -304,15 +452,23 @@ function wire() {
   $('lava-overlay-close')?.addEventListener('click', stop);
   renderNotes();
 
-  // The My LAVA desktop icon opens the window through main.js; starting the
-  // conversation stays an explicit click so the microphone is never grabbed
-  // by merely opening a window.
+  // Every CTA that should start LAVA carries data-lava-start.
   document.querySelectorAll('[data-lava-start]').forEach((el) => {
     el.addEventListener('click', (event) => {
       event.preventDefault();
       start();
     });
   });
+
+  // The breakout tab lands here; open LAVA straight away. The microphone is
+  // still only requested by the SDK after this user-initiated navigation.
+  let wantsLava = false;
+  try {
+    wantsLava = new URLSearchParams(window.location.search).get('lava') === '1';
+  } catch {
+    wantsLava = false;
+  }
+  if (wantsLava) start();
 }
 
 if (document.readyState === 'loading') {

@@ -1593,8 +1593,10 @@
   .modal-blocked.visible { display: flex; }
 </style>
   <link rel="stylesheet" href="portfolio-monitors.css?v=20261101-section1">
+  <link rel="stylesheet" href="/css/lava.css">
   <link rel="stylesheet" href="../components/cookie-banner.css">
   <script src="portfolio-monitors.js?v=20261101-hero" defer></script>
+  <script type="module" src="/js/lava/index.mjs"></script>
   <script src="../components/cookie-banner.js" defer></script>
   <!-- TrustBox script -->
   <script type="text/javascript" src="https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js" async></script>
@@ -1692,7 +1694,8 @@
         Orkestratie van technologie. Synthese van systemen. Versnelling van resultaat.
       </p>
       <div class="hero-ctas">
-        <a href="#contact" class="btn-primary">Start een project</a>
+        <button type="button" id="lava-start-hero" class="btn-primary" data-lava-start>Start een project</button>
+        <a class="lava-type-link" href="../intakeformulier.html">Liever typen? Vul het formulier in</a>
         <a href="#werk" class="btn-secondary">Bekijk werk</a>
       </div>
       <div class="logo-marquee" aria-label="Opdrachtgevers">
@@ -1961,7 +1964,8 @@
       </p>
       <div class="contact-actions">
         <div class="contact-cta-wrap">
-          <button class="btn-primary contact-intake-button" type="button" id="open-intake-modal">Okaayy, let's go!</button>
+          <button class="btn-primary contact-intake-button" type="button" id="lava-start-contact" data-lava-start>Okaayy, let's go!</button>
+          <button type="button" class="lava-type-link" id="open-intake-modal">Liever typen? Vul het formulier in</button>
           <video class="contact-popout-gif" src="video/okay-lets-go.mp4" autoplay loop muted playsinline aria-hidden="true"></video>
           <span class="contact-intake-note">(*Een kan koffie en gebruik van laptop, tablet of PC worden aanbevolen)</span>
         </div>

@@ -119,3 +119,82 @@ test('the correction button sends a message to LAVA rather than editing the note
   assert.match(clientJs, /sendUserMessage/);
   assert.match(clientJs, /Dat klopt niet\./);
 });
+
+// --- overlay shell and site integration (Task 13) ---
+
+const modernPath = new URL('../assets/mnrv.html', import.meta.url);
+const vercelPath = new URL('../vercel.json', import.meta.url);
+
+const [modernHtml, vercelRaw] = await Promise.all([
+  readFile(modernPath, 'utf8'),
+  readFile(vercelPath, 'utf8'),
+]);
+
+test('assets/mnrv.html start-een-project CTA calls window.LAVA.start and no longer links to #contact', () => {
+  const cta = modernHtml.match(/<[^>]*id="lava-start-hero"[^>]*>/);
+  assert.ok(cta, 'the hero CTA must be identifiable');
+  assert.doesNotMatch(cta[0], /href="#contact"/, 'the hero CTA starts LAVA, it does not jump to a form');
+  assert.match(modernHtml, /data-lava-start/, 'CTAs opt in through the data attribute the client binds');
+});
+
+test("assets/mnrv.html okaay-lets-go CTA calls window.LAVA.start instead of opening the intake modal", () => {
+  const cta = modernHtml.match(/<[^>]*id="lava-start-contact"[^>]*>/);
+  assert.ok(cta, 'the contact CTA must be identifiable');
+  assert.match(cta[0], /data-lava-start/);
+  // The modal is still reachable, but from the typed-route link, not this button.
+  assert.notEqual(
+    modernHtml.indexOf('id="lava-start-contact"'),
+    modernHtml.indexOf('id="open-intake-modal"'),
+    'the LAVA CTA and the modal trigger must be two different elements',
+  );
+});
+
+test('assets/mnrv.html offers a liever-typen link to intakeformulier.html next to each CTA', () => {
+  const links = modernHtml.match(/class="[^"]*lava-type-link[^"]*"/g) || [];
+  assert.ok(links.length >= 2, `expected a typed-route link beside each CTA, found ${links.length}`);
+  assert.match(modernHtml, /liever typen/i);
+  // The existing modal code binds this id and still opens intakeformulier.html.
+  assert.match(modernHtml, /id="open-intake-modal"/);
+});
+
+test('assets/mnrv.html loads js/lava/index.mjs and css/lava.css', () => {
+  assert.match(modernHtml, /<link[^>]+href="\/css\/lava\.css"/);
+  assert.match(modernHtml, /<script[^>]+type="module"[^>]+src="\/js\/lava\/index\.mjs"/);
+});
+
+test('vercel.json Permissions-Policy grants microphone to self only', () => {
+  const config = JSON.parse(vercelRaw);
+  const headers = config.headers.flatMap((entry) => entry.headers);
+  const policy = headers.find((h) => h.key.toLowerCase() === 'permissions-policy');
+  assert.ok(policy, 'Permissions-Policy must be set');
+  assert.match(policy.value, /microphone=\(self\)/);
+  assert.doesNotMatch(policy.value, /microphone=\*/);
+});
+
+test('vercel.json no longer mentions omnicontent.nl', () => {
+  assert.doesNotMatch(vercelRaw, /omnicontent\.nl/i);
+});
+
+test('css/lava.css collapses the notes strip under a 768px media query', () => {
+  assert.match(lavaCss, /@media[^{]*max-width:\s*767px/);
+  assert.match(lavaCss, /lava-notes-strip/, 'the overlay renders notes as a strip, not a second window');
+});
+
+test('the overlay shell has no drag or resize affordance', () => {
+  // main.js drives dragging from .win-titlebar; the overlay panel must opt out.
+  assert.match(lavaCss, /\.lava-overlay[^}]*\{[^}]*position:\s*fixed/s);
+  assert.match(clientJs, /lava-overlay/);
+});
+
+test('the client opens a real tab when it is inside the sandboxed portfolio iframe', () => {
+  // The iframe at portfolio.html:153 is an opaque origin, where getUserMedia
+  // cannot work; the sandbox allows popups but not top-level navigation.
+  assert.match(clientJs, /window\.self\s*!==\s*window\.top/);
+  assert.match(clientJs, /lava=1/);
+  assert.match(clientJs, /window\.open/);
+});
+
+test('index.html starts LAVA when it is opened with ?lava=1', () => {
+  assert.match(clientJs, /lava=1|['"]lava['"]/);
+  assert.match(clientJs, /URLSearchParams|location\.search/);
+});
