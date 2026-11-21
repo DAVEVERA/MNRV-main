@@ -85,6 +85,25 @@ export async function claimReport(conversationId, clientImpl) {
 }
 
 /**
+ * Gives a report claim back. The report endpoint claims before it mails, so a
+ * claim that is never released after a failed send would make the conversation
+ * look delivered and stop the post-call fallback from retrying — a lead lost in
+ * silence. Releasing is best-effort by nature: it runs on an error path, and
+ * throwing here would mask the send failure that caused it.
+ */
+export async function releaseReport(conversationId, clientImpl) {
+  if (typeof conversationId !== 'string' || conversationId === '') {
+    throw new TypeError('releaseReport needs a conversation id');
+  }
+  const res = await clientImpl.request(
+    `/rest/v1/lava_reports?conversation_id=eq.${encodeURIComponent(conversationId)}`,
+    { method: 'DELETE', headers: { prefer: 'return=minimal' } },
+  );
+  if (!res.ok) throw new Error(`Releasing the report claim failed with status ${res.status}`);
+  return true;
+}
+
+/**
  * Atomically reserves one calendar instant. The primary key is the lock, so
  * callers in different Vercel instances cannot both win. The table contains no
  * visitor or conversation data.

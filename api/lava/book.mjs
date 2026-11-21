@@ -2,8 +2,9 @@
 // the rules and free/busy state again immediately before insertion. Supabase
 // supplies the distributed mutex; a stable Google event id is a second guard.
 
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
+import { eventIdForSlot, icsUidForSlot } from './_lib/appointment.mjs';
 import { getBusy, insertEvent } from './_lib/google.mjs';
 import { verifyToolAuth } from './_lib/guards.mjs';
 import { buildIcs } from './_lib/ics.mjs';
@@ -49,11 +50,6 @@ function cleanString(value) {
 
 function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function eventIdForSlot(startIso) {
-  const canonicalStart = new Date(startIso).toISOString();
-  return `lava${createHash('sha256').update(canonicalStart).digest('hex').slice(0, 48)}`;
 }
 
 function overlapsSlot(entry, startMs, endMs) {
@@ -145,7 +141,7 @@ export function createBookHandler({
       });
       const icsText = buildIcs(
         {
-          uid: `${appointment.id}@mnrv.nl`,
+          uid: icsUidForSlot(startIso),
           startIso,
           endIso: timeMax,
           summary,

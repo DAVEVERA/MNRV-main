@@ -6,6 +6,8 @@ import test from 'node:test';
 import { createAvailabilityHandler } from '../api/lava/availability.mjs';
 import { createBookHandler } from '../api/lava/book.mjs';
 import sessionHandler from '../api/lava/session.mjs';
+import { createReportHandler } from '../api/lava/report.mjs';
+import { sendMail } from '../api/lava/_lib/mail.mjs';
 
 import {
   countLavaEventsPerDay,
@@ -962,5 +964,276 @@ test('book returns icsText containing the booked start time and visitor invitati
     assert.match(r.json.icsText, /DTSTART:20261020T080000Z\r\n/);
     assert.match(r.json.icsText, /ATTENDEE:mailto:mark@example\.nl\r\n/);
     assert.match(r.json.icsText, /Google Meet: https:\/\/meet\.google\.com\/abc-defg-hij/);
+  });
+});
+
+// --- report.mjs (Task 9) ---
+
+const REPORT_NOW = new Date('2026-10-19T08:00:00.000Z');
+
+const REPORT_INPUT = {
+  naam: 'Mark de Wit',
+  email: 'mark@example.nl',
+  telefoon: '+31 6 12345678',
+  label: 'binnen_de_lijnen',
+  uitdaging: 'Onze planning kost te veel handwerk.',
+  beoogde_oplossing: 'Een koppeling tussen de planning en de urenregistratie.',
+  verwachting: 'Binnen een kwartaal live.',
+  gespreksdoel: 'Uitvinden of dit haalbaar is.',
+  uitkomst: 'Afspraak ingepland.',
+  follow_up: 'Dave stuurt een voorstel.',
+  vervolgactie: { wat: 'Voorstel opstellen' },
+  transcript: 'LAVA: Je spreekt met LAVA.\nMark: Hallo.',
+  ending: 'appointment',
+};
+
+const REPORT_APPOINTMENT = {
+  startIso: '2026-10-20T10:00:00+02:00',
+  endIso: '2026-10-20T10:30:00+02:00',
+  summary: 'LAVA intake — Mark de Wit',
+  description: 'Uitdaging: Onze planning kost te veel handwerk.',
+  meetUrl: 'https://meet.google.com/abc-defg-hij',
+};
+
+async function runReport({
+  req,
+  body,
+  claimResult = true,
+  mailFailsFor = null,
+  mailError,
+} = {}) {
+  const sent = [];
+  const released = [];
+  const handler = createReportHandler({
+    now: () => REPORT_NOW,
+    createStoreClient: () => ({ kind: 'fake-store' }),
+    claimReport: async (conversationId, store) => {
+      sent.push({ kind: 'claim', conversationId, store });
+      return claimResult;
+    },
+    releaseReport: async (conversationId) => {
+      released.push(conversationId);
+    },
+    sendMail: async (payload) => {
+      const to = payload.to.join(',');
+      if (mailFailsFor && to.includes(mailFailsFor)) {
+        throw mailError ?? new Error(`Resend refused ${to}`);
+      }
+      sent.push({ kind: 'mail', payload });
+      return { id: `mail-${sent.length}` };
+    },
+  });
+  const actualReq =
+    req ??
+    fakeReq({
+      body: body ?? {
+        conversationId: 'conv-123',
+        report: REPORT_INPUT,
+        appointment: REPORT_APPOINTMENT,
+      },
+      headers: { 'x-lava-tool-secret': 'tool-secret' },
+    });
+  const res = fakeRes();
+  await handler(actualReq, res);
+  const mails = sent.filter((s) => s.kind === 'mail').map((s) => s.payload);
+  return { res, json: res.body ? JSON.parse(res.body) : undefined, sent, mails, released };
+}
+
+const adminMail = (mails) => mails.find((m) => m.to.includes('info@mnrv.nl'));
+const visitorMail = (mails) => mails.find((m) => m.to.includes('mark@example.nl'));
+
+test('report returns 401 without the tool secret', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport({
+      req: fakeReq({
+        body: { conversationId: 'conv-123', report: REPORT_INPUT },
+        headers: { 'x-lava-tool-secret': 'wrong' },
+      }),
+    });
+    assert.equal(r.res.statusCode, 401);
+    assert.deepEqual(r.json, { ok: false, reason: 'unauthorized' });
+    assert.equal(r.mails.length, 0);
+    assert.equal(r.sent.length, 0, 'an unauthorized call must not claim the conversation');
+  });
+});
+
+test('report returns missing fields from normalizeReport without mailing', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport({
+      body: {
+        conversationId: 'conv-123',
+        report: { naam: 'Mark de Wit', label: 'binnen_de_lijnen', ending: 'appointment' },
+      },
+    });
+    assert.equal(r.res.statusCode, 400);
+    assert.equal(r.json.ok, false);
+    assert.deepEqual(r.json.missing.sort(), ['email', 'uitdaging']);
+    assert.equal(r.mails.length, 0);
+    assert.equal(r.sent.length, 0, 'an invalid report must not consume the idempotency claim');
+  });
+});
+
+test('report mails info@mnrv.nl with the eight sections', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport();
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { ok: true, mailed: true });
+
+    const admin = adminMail(r.mails);
+    assert.ok(admin, 'the owner must receive the report');
+    for (const heading of [
+      'De uitdaging',
+      'De beoogde oplossing',
+      'Wat ze verwachten',
+      'Het doel van het gesprek',
+      'De uitkomst van het gesprek',
+      'Follow-up actie',
+      'Vervolgactie',
+      'Transcriptie',
+    ]) {
+      assert.match(admin.html, new RegExp(heading), `admin mail is missing section: ${heading}`);
+    }
+    assert.match(admin.subject, /Mark de Wit/);
+  });
+});
+
+test('report attaches the ics only when an appointment is present', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const withAppt = await runReport();
+    const adminWith = adminMail(withAppt.mails);
+    assert.equal(adminWith.attachments.length, 1);
+    assert.match(adminWith.attachments[0].filename, /\.ics$/);
+
+    const without = await runReport({
+      body: {
+        conversationId: 'conv-456',
+        report: { ...REPORT_INPUT, ending: 'follow_up_request' },
+      },
+    });
+    const adminWithout = adminMail(without.mails);
+    assert.ok(!adminWithout.attachments || adminWithout.attachments.length === 0);
+    assert.equal(visitorMail(without.mails), undefined, 'no appointment means no invitation');
+  });
+});
+
+test('report mails the visitor the invitation only, without the report body', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport();
+    const visitor = visitorMail(r.mails);
+    assert.ok(visitor, 'the visitor must receive the invitation');
+    assert.equal(visitor.attachments.length, 1);
+    // The transcript and the lead label are Dave's alone.
+    assert.doesNotMatch(visitor.html, /Transcriptie/);
+    assert.doesNotMatch(visitor.html, /Type aanvraag/);
+    assert.doesNotMatch(visitor.html, /Binnen de lijnen/);
+  });
+});
+
+test('report still resolves ok when the visitor mail fails', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport({ mailFailsFor: 'mark@example.nl' });
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { ok: true, mailed: true });
+    assert.ok(adminMail(r.mails), "a typo'd visitor address must not cost Dave the lead");
+    assert.deepEqual(r.released, [], 'the claim stands because the owner was mailed');
+  });
+});
+
+test('report releases the claim when the admin mail fails so the fallback can retry', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport({ mailFailsFor: 'info@mnrv.nl' });
+    assert.equal(r.res.statusCode, 502);
+    assert.deepEqual(r.json, { ok: false, reason: 'mail_failed' });
+    assert.deepEqual(r.released, ['conv-123']);
+  });
+});
+
+test('report sends nothing on a second call with the same conversationId', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport({ claimResult: false });
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { ok: true, mailed: false, reason: 'already_sent' });
+    assert.equal(r.mails.length, 0, 'the duplicate must not mail anyone');
+  });
+});
+
+test('report base64-encodes the ics attachment for Resend', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport();
+    const attachment = adminMail(r.mails).attachments[0];
+    const decoded = Buffer.from(attachment.content, 'base64').toString('utf8');
+    assert.match(decoded, /^BEGIN:VCALENDAR\r\n/);
+    assert.match(decoded, /DTSTART:20261020T080000Z\r\n/);
+  });
+});
+
+test('report builds the same ICS UID the booking endpoint already handed the visitor', async () => {
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret', INTAKE_ADMIN_EMAIL: 'info@mnrv.nl' }, async () => {
+    const booked = await runBook();
+    const reported = await runReport();
+    const uidOf = (ics) => ics.match(/UID:(.+)\r\n/)[1];
+    const attachment = adminMail(reported.mails).attachments[0];
+    const mailedIcs = Buffer.from(attachment.content, 'base64').toString('utf8');
+    assert.equal(
+      uidOf(mailedIcs),
+      uidOf(booked.json.icsText),
+      'two UIDs for one appointment show up as two events in the visitor calendar',
+    );
+  });
+});
+
+test('sendMail posts the Resend payload with the configured sender and key', async () => {
+  await withEnv(
+    { RESEND_API_KEY: 'rk-test', INTAKE_FROM_EMAIL: 'intake@mnrv.nl' },
+    async () => {
+      const calls = [];
+      const fetchImpl = async (url, init) => {
+        calls.push({ url: String(url), init });
+        return json({ id: 'mail-1' });
+      };
+      const result = await sendMail(
+        {
+          to: ['info@mnrv.nl'],
+          subject: 'LAVA intake — Mark de Wit',
+          html: '<p>hoi</p>',
+          text: 'hoi',
+          attachments: [{ filename: 'afspraak.ics', content: 'QkVHSU4=' }],
+        },
+        fetchImpl,
+      );
+      assert.deepEqual(result, { id: 'mail-1' });
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, 'https://api.resend.com/emails');
+      assert.equal(calls[0].init.headers.Authorization, 'Bearer rk-test');
+      const payload = JSON.parse(calls[0].init.body);
+      assert.equal(payload.from, 'intake@mnrv.nl');
+      assert.deepEqual(payload.to, ['info@mnrv.nl']);
+      assert.equal(payload.attachments[0].filename, 'afspraak.ics');
+    },
+  );
+});
+
+test('sendMail throws when Resend refuses so the caller can release the claim', async () => {
+  await withEnv({ RESEND_API_KEY: 'rk-test' }, async () => {
+    const fetchImpl = async () => json({ message: 'invalid to address' }, 422);
+    await assert.rejects(
+      () => sendMail({ to: ['bad@'], subject: 's', html: '<p>h</p>' }, fetchImpl),
+      /422/,
+    );
+  });
+});
+
+test('sendMail throws when RESEND_API_KEY is absent instead of posting unauthenticated', async () => {
+  await withEnv({ RESEND_API_KEY: undefined }, async () => {
+    let called = false;
+    const fetchImpl = async () => {
+      called = true;
+      return json({ id: 'mail-1' });
+    };
+    await assert.rejects(
+      () => sendMail({ to: ['info@mnrv.nl'], subject: 's', html: '<p>h</p>' }, fetchImpl),
+      /RESEND_API_KEY/,
+    );
+    assert.equal(called, false);
   });
 });
