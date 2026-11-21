@@ -194,6 +194,23 @@
   var fsBox = document.getElementById('embed-fs');
   var fsFrame = document.getElementById('embed-fs-frame');
 
+  // LAVA asks to break out of the sandbox.
+  //
+  // The iframe below has no allow-same-origin, so inside it the microphone can
+  // never be granted. A popup would inherit that same sandbox, so the embedded
+  // page sends a message instead and this page -- which is not sandboxed --
+  // performs the top-level navigation.
+  window.addEventListener('message', function(event) {
+    if (event.origin !== window.location.origin) return;
+    var frames = [frame, fsFrame];
+    var fromOurFrame = frames.some(function(f) { return f && event.source === f.contentWindow; });
+    if (!fromOurFrame) return;
+    var data = event.data;
+    if (!data || data.source !== 'mnrv-lava' || data.action !== 'open') return;
+    // A fixed destination: never navigate to a URL the frame chose.
+    window.location.href = '/index.html?lava=1';
+  });
+
   function clock() {
     var el = document.getElementById('tray-clock');
     if (!el) return;

@@ -155,6 +155,12 @@ export function createBookHandler({
       return sendJson(res, 200, {
         ok: true,
         startIso,
+        // Echoed so send_report can describe THIS appointment instead of
+        // inventing an end time or a title the model never saw.
+        endIso: timeMax,
+        summary,
+        description,
+        meetUrl: appointment.meetUrl,
         label: labelFormatter.format(new Date(startMs)),
         icsText,
       });

@@ -42,6 +42,24 @@ async function readBody(req) {
 
 const adminEmail = () => process.env.INTAKE_ADMIN_EMAIL || 'info@mnrv.nl';
 
+// report.email and appointment.meetUrl arrive as tool-call arguments, i.e. from
+// whatever the conversation said. Both leave the building: one as a recipient on
+// MNRV's authenticated domain, the other as a link in that mail. /api/lava/book
+// already checks the address; this is the same gate on the mailing path.
+function validEmail(value) {
+  return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function trustedMeetUrl(value) {
+  if (typeof value !== 'string' || value === '') return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === 'meet.google.com' ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // Dave sorts his inbox by subject; a reconstruction must say so there too,
 // not only in the body note the renderers add.
 function subjectFor(report) {
@@ -115,18 +133,30 @@ export async function deliverReport(
   }
   const report = normalized.report;
   const current = now();
+  const id = conversationId.trim();
 
-  const store = createStoreClientImpl();
-  const won = claimed || (await claimReportImpl(conversationId, store));
-  if (!won) {
-    return { status: 200, payload: { ok: true, mailed: false, reason: 'already_sent' } };
+  // Everything that can throw happens BEFORE the claim. The claim is what stops
+  // the post-call fallback from delivering, so a throw taken after it would mark
+  // the conversation handled while nobody was ever told.
+  let icsText;
+  if (appointment && Number.isFinite(Date.parse(appointment.startIso)) && Number.isFinite(Date.parse(appointment.endIso))) {
+    try {
+      icsText = icsFor(appointment, report, current);
+    } catch (err) {
+      // A broken slot costs the invitation, never the lead.
+      console.error('lava report: could not build the invitation:', err.message);
+    }
   }
-
-  const hasAppointment = Boolean(appointment && appointment.startIso && appointment.endIso);
-  const icsText = hasAppointment ? icsFor(appointment, report, current) : undefined;
+  const hasAppointment = Boolean(icsText);
   const attachments = icsText
     ? [{ filename: ICS_FILENAME, content: Buffer.from(icsText, 'utf8').toString('base64') }]
     : [];
+
+  const store = createStoreClientImpl();
+  const won = claimed || (await claimReportImpl(id, store));
+  if (!won) {
+    return { status: 200, payload: { ok: true, mailed: false, reason: 'already_sent' } };
+  }
 
   try {
     await sendMailImpl({
@@ -139,7 +169,7 @@ export async function deliverReport(
   } catch (err) {
     console.error('lava report: owner mail failed:', err.message);
     try {
-      await releaseReportImpl(conversationId, store);
+      await releaseReportImpl(id, store);
     } catch (releaseErr) {
       // The send failure is the one worth reporting; log and keep it.
       console.error('lava report: releasing the claim also failed:', releaseErr.message);
@@ -147,12 +177,12 @@ export async function deliverReport(
     return { status: 502, payload: { ok: false, reason: 'mail_failed' } };
   }
 
-  if (hasAppointment) {
+  if (hasAppointment && validEmail(report.email)) {
     try {
       await sendMailImpl({
         to: [report.email],
         subject: 'Je afspraak met MNRV',
-        html: visitorHtml(report, appointment.meetUrl),
+        html: visitorHtml(report, trustedMeetUrl(appointment.meetUrl)),
         attachments,
       });
     } catch (err) {

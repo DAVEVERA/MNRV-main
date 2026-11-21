@@ -125,9 +125,12 @@ test('the correction button sends a message to LAVA rather than editing the note
 const modernPath = new URL('../assets/mnrv.html', import.meta.url);
 const vercelPath = new URL('../vercel.json', import.meta.url);
 
-const [modernHtml, vercelRaw] = await Promise.all([
+const portfolioPath = new URL('../portfolio.html', import.meta.url);
+
+const [modernHtml, vercelRaw, portfolioHtml] = await Promise.all([
   readFile(modernPath, 'utf8'),
   readFile(vercelPath, 'utf8'),
+  readFile(portfolioPath, 'utf8'),
 ]);
 
 test('assets/mnrv.html start-een-project CTA calls window.LAVA.start and no longer links to #contact', () => {
@@ -186,12 +189,19 @@ test('the overlay shell has no drag or resize affordance', () => {
   assert.match(clientJs, /lava-overlay/);
 });
 
-test('the client opens a real tab when it is inside the sandboxed portfolio iframe', () => {
-  // The iframe at portfolio.html:153 is an opaque origin, where getUserMedia
-  // cannot work; the sandbox allows popups but not top-level navigation.
+test('the client asks its parent to break out of the sandboxed portfolio iframe', () => {
+  // The iframe at portfolio.html:153 is an opaque origin where getUserMedia
+  // cannot work. A popup inherits the sandbox (no allow-popups-to-escape-sandbox)
+  // so it is opaque too; the unsandboxed parent does the navigation instead.
+  // The behaviour itself is covered in tests/lava-client.test.mjs.
   assert.match(clientJs, /window\.self\s*!==\s*window\.top/);
   assert.match(clientJs, /lava=1/);
-  assert.match(clientJs, /window\.open/);
+  assert.match(clientJs, /postMessage/);
+  assert.doesNotMatch(clientJs, /window\.open\(/, 'a popup inherits the sandbox and cannot help');
+
+  const portfolio = portfolioHtml;
+  assert.match(portfolio, /mnrv-lava/, 'portfolio.html must act on the breakout request');
+  assert.match(portfolio, /event\.origin !== window\.location\.origin/, 'the listener must check the origin');
 });
 
 test('index.html starts LAVA when it is opened with ?lava=1', () => {

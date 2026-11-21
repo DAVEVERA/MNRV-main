@@ -1291,6 +1291,9 @@ async function runPostCall({
   claimResult = true,
   extracted = EXTRACTED,
   extractError,
+  parsedBody,
+  asWebRequest = false,
+  mailFailsFor = null,
 } = {}) {
   const events = [];
   const handler = createPostCallHandler({
@@ -1309,15 +1312,33 @@ async function runPostCall({
       return extracted;
     },
     sendMail: async (payload) => {
+      if (mailFailsFor && payload.to.join(',').includes(mailFailsFor)) {
+        throw new Error(`Resend refused ${payload.to.join(',')}`);
+      }
       events.push({ kind: 'mail', payload });
       return { id: 'mail-1' };
     },
   });
-  const req = {
-    method: 'POST',
-    headers: { 'elevenlabs-signature': signature ?? signPostCall(rawBody) },
-    body: rawBody,
-  };
+  const sig = signature ?? signPostCall(rawBody);
+  let req;
+  if (asWebRequest) {
+    req = new Request('https://mnrv.nl/api/lava/post-call', {
+      method: 'POST',
+      headers: { 'elevenlabs-signature': sig, 'content-type': 'application/json' },
+      body: rawBody,
+    });
+  } else {
+    req = {
+      method: 'POST',
+      headers: { 'elevenlabs-signature': sig },
+      // Vercel hands the handler an already-parsed object for application/json.
+      body: parsedBody !== undefined ? parsedBody : rawBody,
+      // ...on an IncomingMessage, which is ALWAYS async-iterable and, having
+      // already been drained by the body parser, yields nothing. Reproducing
+      // that is the whole point of this fixture.
+      async *[Symbol.asyncIterator]() {},
+    };
+  }
   const res = fakeRes();
   await handler(req, res);
   const mails = events.filter((e) => e.kind === 'mail').map((e) => e.payload);
@@ -1482,5 +1503,164 @@ test('extractReport throws when Claude refuses so the caller releases the claim'
   await withEnv({ ANTHROPIC_API_KEY: 'sk-test' }, async () => {
     const fetchImpl = async () => json({ error: 'overloaded' }, 529);
     await assert.rejects(() => extractReport('x', fetchImpl), /529/);
+  });
+});
+
+// --- review fix pass: report endpoint hardening ---
+
+test('report delivers to Dave even when the appointment is unusable, and never leaks the claim', async () => {
+  // C3: the ICS build used to sit between the claim and the try, so a model
+  // that sent an unparseable startIso left the conversation claimed forever
+  // and nobody was ever told.
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    for (const appointment of [
+      { ...REPORT_APPOINTMENT, startIso: 'maandag 20 oktober 10:00' },
+      { ...REPORT_APPOINTMENT, endIso: '' },
+      { ...REPORT_APPOINTMENT, startIso: '2026-10-20T10:00:00+02:00', endIso: 'nonsense' },
+    ]) {
+      const r = await runReport({
+        body: { conversationId: 'conv-bad-appt', report: REPORT_INPUT, appointment },
+      });
+      assert.equal(r.res.statusCode, 200, `unusable appointment ${appointment.startIso}/${appointment.endIso}`);
+      assert.equal(r.json.ok, true);
+      const admin = adminMail(r.mails);
+      assert.ok(admin, 'Dave must still get the lead when only the invitation is broken');
+      assert.ok(!admin.attachments || admin.attachments.length === 0, 'no invitation from a broken slot');
+      assert.equal(visitorMail(r.mails), undefined, 'no invitation mail without a usable appointment');
+    }
+  });
+});
+
+test('report refuses to mail a visitor address that is not an address', async () => {
+  // I11: report.email is model-supplied and was never checked, so MNRV's
+  // authenticated domain would relay to whatever the conversation named.
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport({
+      body: {
+        conversationId: 'conv-bad-mail',
+        report: { ...REPORT_INPUT, email: 'niet-een-adres' },
+        appointment: REPORT_APPOINTMENT,
+      },
+    });
+    assert.equal(r.res.statusCode, 200);
+    assert.ok(adminMail(r.mails), 'Dave still gets the report');
+    assert.equal(r.mails.length, 1, 'nothing is sent to an unusable address');
+  });
+});
+
+test('report only renders a Google Meet link it can trust', async () => {
+  // I11: meetUrl reached an <a href> straight from the tool call.
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport({
+      body: {
+        conversationId: 'conv-bad-link',
+        report: REPORT_INPUT,
+        appointment: { ...REPORT_APPOINTMENT, meetUrl: 'https://meet-google.example/j/x' },
+      },
+    });
+    const visitor = visitorMail(r.mails);
+    assert.ok(visitor, 'the visitor still gets the invitation');
+    assert.doesNotMatch(visitor.html, /meet-google\.example/, 'an untrusted link must not be rendered');
+  });
+});
+
+test('report treats a conversation id as the same claim however it is padded', async () => {
+  // I9: the claim used the raw string while validation used the trimmed one.
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runReport({
+      body: { conversationId: '  conv-123  ', report: REPORT_INPUT, appointment: REPORT_APPOINTMENT },
+    });
+    const claim = r.sent.find((s) => s.kind === 'claim');
+    assert.equal(claim.conversationId, 'conv-123');
+  });
+});
+
+// --- review fix pass: post-call must verify the bytes that were signed ---
+
+test('post-call verifies a real Vercel delivery, where the body arrives already parsed', async () => {
+  // C2: Vercel parses an application/json body into req.body before the handler
+  // runs (see the comment in session.mjs). The old raw-body reader fell through
+  // to the stream branch — every IncomingMessage is async-iterable — drained
+  // nothing and verified the empty string, so every genuine webhook 401'd.
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const raw = postCallBody();
+    const r = await runPostCall({ rawBody: raw, parsedBody: JSON.parse(raw) });
+    assert.equal(r.res.statusCode, 200, 'a parsed body must still verify');
+    assert.deepEqual(r.json, { ok: true, mailed: true });
+  });
+});
+
+test('post-call verifies a Web Request delivery', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const raw = postCallBody();
+    const r = await runPostCall({ rawBody: raw, asWebRequest: true });
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { ok: true, mailed: true });
+  });
+});
+
+test('post-call still rejects a parsed body whose signature does not match', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const signed = postCallBody();
+    const tampered = postCallBody({ conversation_id: 'conv-attacker' });
+    const r = await runPostCall({
+      rawBody: tampered,
+      parsedBody: JSON.parse(tampered),
+      signature: signPostCall(signed),
+    });
+    assert.equal(r.res.statusCode, 401);
+    assert.equal(r.events.length, 0);
+  });
+});
+
+test('post-call refuses a timestamp from the future as well as a stale one', async () => {
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const raw = postCallBody();
+    const future = Math.floor(POST_CALL_NOW.getTime() / 1000) + 60 * 60;
+    const r = await runPostCall({ rawBody: raw, signature: signPostCall(raw, { timestamp: future }) });
+    assert.equal(r.res.statusCode, 401);
+  });
+});
+
+test('post-call releases the claim exactly once when delivery fails', async () => {
+  // The fallback used to release, and deliverReport released too, so a
+  // concurrent re-claim could be freed by a path that no longer owned it.
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const r = await runPostCall({ mailFailsFor: 'info@mnrv.nl' });
+    assert.equal(r.res.statusCode, 502);
+    const releases = r.events.filter((e) => e.kind === 'release');
+    assert.equal(releases.length, 1, `expected one release, saw ${releases.length}`);
+  });
+});
+
+test('post-call still reports a conversation that ended before LAVA asked for a name', async () => {
+  // I4: normalizeReport hard-requires naam/email/label, and the extraction
+  // prompt is told to omit what was not said. The safety net existed precisely
+  // for conversations that stopped early, and refused all of them.
+  await withEnv({ ELEVENLABS_WEBHOOK_SECRET: WEBHOOK_SECRET }, async () => {
+    const r = await runPostCall({
+      extracted: { uitdaging: 'Onze planning kost te veel handwerk.' },
+    });
+    assert.equal(r.res.statusCode, 200);
+    assert.deepEqual(r.json, { ok: true, mailed: true });
+    const admin = r.mails.find((m) => m.to.includes('info@mnrv.nl'));
+    assert.ok(admin, 'an anonymous but real lead must still reach Dave');
+    assert.match(admin.html, /Onze planning kost te veel handwerk/);
+    assert.match(admin.html, /achteraf samengesteld/i);
+    assert.match(admin.html, /Onbekende bezoeker/);
+  });
+});
+
+test('book returns the fields send_report needs to describe the same appointment', async () => {
+  // I10: the model had no source for endIso or summary, so it either omitted
+  // the appointment (no .ics for Dave, no invitation for the visitor) or
+  // invented one (C3). Echo them instead.
+  await withEnv({ LAVA_TOOL_SECRET: 'tool-secret' }, async () => {
+    const r = await runBook();
+    assert.equal(r.res.statusCode, 200);
+    assert.equal(r.json.startIso, BOOK_BODY.startIso);
+    assert.equal(r.json.endIso, '2026-10-20T08:30:00.000Z');
+    assert.equal(r.json.summary, 'LAVA intake — Mark de Wit');
+    assert.equal(r.json.meetUrl, 'https://meet.google.com/abc-defg-hij');
   });
 });

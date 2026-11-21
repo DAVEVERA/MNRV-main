@@ -152,6 +152,10 @@
   }
   </script>
 
+  <!-- Cloudflare Turnstile. Public by design. LAVA cannot start a
+       conversation until this holds the real site key: /api/lava/session
+       answers 403 bot_check_failed without a token. -->
+  <meta name="turnstile-site-key" content="">
   <link rel="stylesheet" href="css/lava.css">
   <link rel="stylesheet" href="components/cookie-banner.css">
   <script src="components/cookie-banner.js" defer></script>

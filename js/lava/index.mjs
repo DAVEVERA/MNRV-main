@@ -27,6 +27,11 @@ const SESSION_ENDPOINT = '/api/lava/session';
 // Opened in a new tab when LAVA is started from inside the sandboxed iframe.
 const BREAKOUT_URL = '/index.html?lava=1';
 
+// Cloudflare Turnstile. The site key is public by design and is read from a
+// meta tag so this static site needs no build step; the owner fills it in.
+// Without it /api/lava/session answers 403 bot_check_failed for everyone.
+const TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
 const TEXT = {
   full: 'LAVA zit vandaag vol. Vul het formulier in of mail ons.',
   unavailable: 'LAVA is even niet bereikbaar. Probeer het later nog eens.',
@@ -38,15 +43,85 @@ const TEXT = {
   paused: 'Gepauzeerd',
   notesEmpty: 'Nog niets genoteerd.',
   correction: 'Dat klopt niet.',
+  readyToStart: 'Klaar om te beginnen. Druk op Start gesprek.',
+  notConfigured: 'LAVA is nog niet ingeschakeld op deze site. Vul het formulier in of mail ons.',
 };
 
 const $ = (id) => document.getElementById(id);
 
+function turnstileSiteKey() {
+  return (
+    window.LAVA_TURNSTILE_SITE_KEY ||
+    document.querySelector('meta[name="turnstile-site-key"]')?.getAttribute('content') ||
+    ''
+  );
+}
+
+let turnstileScript;
+function loadTurnstile() {
+  if (!turnstileScript) {
+    turnstileScript = new Promise((resolve, reject) => {
+      if (window.turnstile) return resolve(window.turnstile);
+      const script = document.createElement('script');
+      script.src = TURNSTILE_SCRIPT;
+      script.async = true;
+      script.onload = () => resolve(window.turnstile);
+      script.onerror = () => reject(new Error('Turnstile script could not be loaded'));
+      document.head?.appendChild(script) ?? document.body.appendChild(script);
+    });
+  }
+  return turnstileScript;
+}
+
+/**
+ * One fresh token per attempt. Turnstile tokens are single-use and expire in
+ * about five minutes, so a token minted at page load would refuse the
+ * visitor's second conversation.
+ */
+async function getTurnstileToken() {
+  const sitekey = turnstileSiteKey();
+  if (!sitekey) {
+    // Nothing to send. The endpoint will refuse, and the status line says so,
+    // rather than the visitor meeting a silent failure.
+    throw new Error('no Turnstile site key configured');
+  }
+  const turnstile = await loadTurnstile();
+  let host = $('lava-turnstile');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'lava-turnstile';
+    host.className = 'lava-turnstile';
+    document.body.appendChild(host);
+  }
+  return new Promise((resolve, reject) => {
+    try {
+      turnstile.render(host, {
+        sitekey,
+        size: 'invisible',
+        callback: (token) => resolve(token),
+        'error-callback': () => reject(new Error('Turnstile refused the visitor')),
+        'timeout-callback': () => reject(new Error('Turnstile timed out')),
+      });
+      turnstile.execute?.(host);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// Swapped by tests; the real one talks to Cloudflare.
+let turnstileTokenImpl = getTurnstileToken;
+
 /**
  * assets/mnrv.html is also served inside the sandboxed iframe at
  * portfolio.html:153. That sandbox has no allow-same-origin, so the document is
- * an opaque origin and getUserMedia can never succeed there. The sandbox does
- * allow popups, so LAVA breaks out into a real tab instead of failing quietly.
+ * an opaque origin and getUserMedia can never succeed there.
+ *
+ * A popup does NOT help: without allow-popups-to-escape-sandbox the new context
+ * inherits the whole sandbox flag set, so it is opaque too and /api/lava/session
+ * becomes a cross-origin request with Origin: null. The parent page is the one
+ * that can navigate, so we ask it, using the same bridge pattern the retro
+ * browser already uses.
  */
 function inSandboxedFrame() {
   try {
@@ -204,6 +279,9 @@ const state = {
   frame: null,
   starting: false,
   paused: false,
+  // Counts how often a session was actually attempted, so a test can prove
+  // nothing starts without a click.
+  startAttempts: 0,
 };
 
 const currentShell = () => pickShell(window.innerWidth, window.location.pathname);
@@ -254,7 +332,7 @@ function messageForStatus(status) {
 }
 
 async function mintToken() {
-  const turnstileToken = window.LAVA_TURNSTILE_TOKEN || undefined;
+  const turnstileToken = await turnstileTokenImpl();
   const res = await fetch(SESSION_ENDPOINT, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -294,8 +372,18 @@ function show_appointment({ label, icsText } = {}) {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
   }
-  if (currentShell() === 'overlay') $('lava-appointment-window')?.classList.remove('hidden');
-  else showWindow('lava-appointment-window');
+  const appointmentWindow = $('lava-appointment-window');
+  if (currentShell() === 'overlay') {
+    // The overlay is fixed at z-index 100000; a window left in the body flow is
+    // invisible underneath it, and on the modern route it is unstyled too.
+    const panel = $('lava-overlay')?.querySelector('.lava-overlay-panel');
+    if (panel && appointmentWindow && appointmentWindow.parentElement !== panel) {
+      panel.appendChild(appointmentWindow);
+    }
+    appointmentWindow?.classList.remove('hidden');
+  } else {
+    showWindow('lava-appointment-window');
+  }
   return 'ok';
 }
 
@@ -340,10 +428,10 @@ function closeShell() {
   const overlay = $('lava-overlay');
   overlay?.classList.remove('is-open');
   document.body.style.overflow = '';
-  hideWindow('lava-window');
-  hideWindow('lava-notes-window');
-  $('lava-window')?.classList.add('hidden');
-  $('lava-notes-window')?.classList.add('hidden');
+  for (const id of ['lava-window', 'lava-notes-window', 'lava-appointment-window']) {
+    hideWindow(id);
+    $(id)?.classList.add('hidden');
+  }
 }
 
 // --- lifecycle ------------------------------------------------
@@ -352,11 +440,16 @@ async function start() {
   // Inside the sandboxed portfolio iframe the microphone can never be granted,
   // so open the real desktop in a tab and let it start LAVA there.
   if (inSandboxedFrame()) {
-    window.open(BREAKOUT_URL, '_blank', 'noopener');
+    try {
+      window.parent.postMessage({ source: 'mnrv-lava', action: 'open', url: BREAKOUT_URL }, '*');
+    } catch (err) {
+      console.error('LAVA could not ask the parent page to open:', err);
+    }
     return;
   }
   if (state.conversation || state.starting) return;
   state.starting = true;
+  state.startAttempts += 1;
   openShell();
   setStatus(TEXT.connecting);
   setOrb('idle');
@@ -392,7 +485,8 @@ async function start() {
     startMeter(state.conversation);
   } catch (err) {
     console.error('LAVA could not start:', err);
-    if (err && err.status) setStatus(messageForStatus(err.status));
+    if (err && /Turnstile site key/.test(err.message || '')) setStatus(TEXT.notConfigured);
+    else if (err && err.status) setStatus(messageForStatus(err.status));
     else if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError')) setStatus(TEXT.noMic);
     else setStatus(TEXT.unavailable);
     setOrb('idle');
@@ -451,6 +545,15 @@ function wire() {
   $('lava-pause')?.addEventListener('click', togglePause);
   $('lava-end')?.addEventListener('click', stop);
   $('lava-notes-wrong')?.addEventListener('click', sendCorrection);
+  // index.html ships its own close buttons (class only, no id) and main.js
+  // would merely hide the window, leaving the call and the microphone live.
+  // Bind by structure so every shell hangs up properly.
+  for (const id of ['lava-window', 'lava-notes-window']) {
+    $(id)?.querySelector('.close-btn')?.addEventListener('click', (event) => {
+      event.preventDefault?.();
+      stop();
+    });
+  }
   $('lava-overlay-close')?.addEventListener('click', stop);
   renderNotes();
 
@@ -470,7 +573,14 @@ function wire() {
   } catch {
     wantsLava = false;
   }
-  if (wantsLava) start();
+  if (wantsLava) {
+    // Open the window and wait. Auto-starting would mint a token and call
+    // getUserMedia with no gesture on THIS document: user activation does not
+    // carry across a navigation, so the microphone would open uninvited and
+    // autoplay policy would keep LAVA's own audio suspended anyway.
+    openShell();
+    setStatus(TEXT.readyToStart);
+  }
 }
 
 if (document.readyState === 'loading') {
@@ -480,5 +590,21 @@ if (document.readyState === 'loading') {
 }
 
 window.LAVA = { start, stop };
+
+// --- seams for tests -----------------------------------------
+// The wiring above is where this module's real defects have lived, so
+// tests/lava-client.test.mjs drives it against a fake DOM.
+export function __setConversationForTest(conversation) {
+  state.conversation = conversation;
+}
+export function __openShellForTest() {
+  openShell();
+}
+export function __startedForTest() {
+  return state.startAttempts;
+}
+export function __setTurnstileForTest(fn) {
+  turnstileTokenImpl = fn;
+}
 
 export { start, stop, update_notes, show_appointment };

@@ -17,6 +17,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import { deliverReport } from './report.mjs';
+import { LEAD_LABELS } from './_lib/report.mjs';
 import { claimReport, createStoreClient, releaseReport } from './_lib/store.mjs';
 
 const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -24,6 +25,8 @@ const ANTHROPIC_VERSION = '2023-06-01';
 const EXTRACTION_MODEL = 'claude-sonnet-4-5';
 // A replayed delivery outside this window is refused.
 const TOLERANCE_SECONDS = 30 * 60;
+// A signer whose clock runs slightly fast is tolerated; an hour ahead is not.
+const CLOCK_SKEW_SECONDS = 60;
 
 // Every field normalizeReport reads. The model is told to return strings only;
 // this is the second line of defence.
@@ -40,24 +43,54 @@ const STRING_FIELDS = [
   'follow_up',
 ];
 
+const usable = (value) => (typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined);
+
 function sendJson(res, statusCode, payload) {
   res.statusCode = statusCode;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(payload));
 }
 
-/** The raw bytes, untouched: parsing first would change what we verify. */
+/**
+ * The exact bytes that were signed.
+ *
+ * Order matters and is not obvious. On Vercel's Node runtime an
+ * application/json body is parsed into `req.body` BEFORE the handler runs, and
+ * `req` is an IncomingMessage, which is always async-iterable. So a
+ * stream-first reader drains nothing, returns '' and fails every genuine
+ * delivery. The explicitly captured raw body is checked first, then the
+ * stream, and the parsed object is the last resort.
+ */
 async function readRawBody(req) {
+  // Web Request (Vercel's Web handler signature): the body is untouched.
+  if (typeof req?.text === 'function') return req.text();
+
+  // Some runtimes keep the original bytes beside the parsed value.
+  if (typeof req.rawBody === 'string') return req.rawBody;
+  if (Buffer.isBuffer(req.rawBody)) return req.rawBody.toString('utf8');
+
   if (typeof req.body === 'string') return req.body;
   if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
+
+  // Unparsed stream: read it.
   if (typeof req[Symbol.asyncIterator] === 'function') {
     const chunks = [];
     for await (const chunk of req) chunks.push(Buffer.from(chunk));
-    return Buffer.concat(chunks).toString('utf8');
+    if (chunks.length > 0) return Buffer.concat(chunks).toString('utf8');
   }
-  // An already-parsed object cannot be verified byte-for-byte; re-serialising
-  // would compare a different string than the one that was signed.
+
+  // Last resort: the body was parsed and the bytes are gone. Re-serialising is
+  // not byte-exact in general, so this is a best effort rather than a
+  // guarantee; see VERIFIED_SHAPES in docs/lava-agent-config.md.
   return req.body && typeof req.body === 'object' ? JSON.stringify(req.body) : '';
+}
+
+function headerValue(req, name) {
+  const headers = req?.headers;
+  if (!headers) return undefined;
+  // A Web Request carries a Headers object; Node lower-cases its keys.
+  if (typeof headers.get === 'function') return headers.get(name) ?? undefined;
+  return headers[name] ?? headers[name.toLowerCase()];
 }
 
 export function verifyWebhookSignature(rawBody, header, secret, now = new Date()) {
@@ -72,8 +105,10 @@ export function verifyWebhookSignature(rawBody, header, secret, now = new Date()
   const provided = parts.v0;
   if (!Number.isFinite(timestamp) || typeof provided !== 'string') return false;
 
-  const ageSeconds = Math.abs(Math.floor(now.getTime() / 1000) - timestamp);
-  if (ageSeconds > TOLERANCE_SECONDS) return false;
+  const nowSeconds = Math.floor(now.getTime() / 1000);
+  // Late deliveries happen; deliveries from the future do not.
+  if (timestamp - nowSeconds > CLOCK_SKEW_SECONDS) return false;
+  if (nowSeconds - timestamp > TOLERANCE_SECONDS) return false;
 
   const expected = createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex');
   // Hash both sides so the comparison is length-safe.
@@ -196,7 +231,7 @@ export function createPostCallHandler({
     }
 
     const rawBody = await readRawBody(req);
-    const header = req.headers?.['elevenlabs-signature'] || req.headers?.['ElevenLabs-Signature'];
+    const header = headerValue(req, 'elevenlabs-signature');
     if (!verifyWebhookSignature(rawBody, header, secret, now())) {
       return sendJson(res, 401, { ok: false, reason: 'bad_signature' });
     }
@@ -250,7 +285,24 @@ export function createPostCallHandler({
 
     // The ending is ours to set, not the model's: this report IS a
     // reconstruction however confidently the transcript reads.
-    const report = { ...extracted, transcript: transcriptText, ending: 'fallback' };
+    //
+    // normalizeReport hard-requires naam, email, uitdaging and label, and the
+    // extraction prompt is told to omit whatever was not said. LAVA asks for a
+    // name and an address late, so the conversations this net exists for -- the
+    // ones that stopped early -- are exactly the ones missing those fields.
+    // Refusing them would make the net a no-op, so the gaps are named instead.
+    // Safe here: this path never has an appointment, so no invitation and no
+    // visitor mail is built from these placeholders, and the transcript is
+    // always attached for Dave to read.
+    const report = {
+      ...extracted,
+      naam: usable(extracted.naam) || 'Onbekende bezoeker',
+      email: usable(extracted.email) || 'onbekend',
+      uitdaging: usable(extracted.uitdaging) || '(niet expliciet benoemd)',
+      label: LEAD_LABELS.includes(extracted.label) ? extracted.label : 'buiten_de_lijnen',
+      transcript: transcriptText,
+      ending: 'fallback',
+    };
 
     try {
       const { status, payload: result } = await deliverReportImpl(
@@ -265,7 +317,9 @@ export function createPostCallHandler({
           ...(sendMailImpl ? { sendMail: sendMailImpl } : {}),
         },
       );
-      if (status >= 400) await releaseClaim(releaseReportImpl, conversationId, store);
+      // deliverReport releases the claim itself on its own failure path, so a
+      // second release here could free a claim a concurrent send_report has
+      // since taken, and both paths would mail.
       return sendJson(res, status, result);
     } catch (err) {
       console.error('lava post-call: delivery failed:', err.message);

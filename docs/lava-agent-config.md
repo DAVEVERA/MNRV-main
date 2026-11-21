@@ -167,6 +167,50 @@ Alle drie sturen de header `x-lava-tool-secret` met de waarde van
 
 `kind` is `"intake"` of `"callback"`. Bij `"callback"` is `telefoon` verplicht.
 
+### `conversationId` — géén parameter die het model invult
+
+> **Dit is de belangrijkste instelling op deze pagina.**
+
+Zet `conversationId` in alle twee de tools als een **vaste parameter die aan de
+systeemvariabele van het gesprek hangt** (`{{system__conversation_id}}` of hoe
+het platform die noemt). Laat het model hem **niet** zelf bedenken.
+
+Op die ene string rust de hele dubbele-verslagbeveiliging: `send_report` en de
+post-call webhook herkennen elkaar nergens anders aan. Gaat het mis, dan gaat
+het op een van twee manieren mis:
+
+- Het model verzint per keer iets anders → beide routes claimen met succes →
+  **Dave krijgt elk gesprek twee keer**.
+- Het model stuurt steeds dezelfde tekst → het eerste gesprek claimt hem en elk
+  volgend `send_report` antwoordt `already_sent` → **geen verslag én geen
+  uitnodiging voor de bezoeker**, alleen later een terugval-reconstructie.
+
+De post-call webhook leest `data.conversation_id` uit de payload van
+ElevenLabs; die moet dus dezelfde waarde zijn.
+
+### De vorm van `appointment` (optioneel, alleen bij een afspraak)
+
+Neem de waarden **letterlijk over uit het antwoord van `book_appointment`**.
+Verzin er geen.
+
+```json
+{
+  "startIso":    "uit book_appointment.startIso",
+  "endIso":      "uit book_appointment.endIso",
+  "summary":     "uit book_appointment.summary",
+  "description": "uit book_appointment.description",
+  "meetUrl":     "uit book_appointment.meetUrl, als die er is"
+}
+```
+
+Laat `appointment` weg als er geen afspraak is. Een onbruikbare `startIso` of
+`endIso` kost alleen de uitnodiging, nooit het verslag: het endpoint slaat de
+bijlage dan over en mailt Dave gewoon.
+
+`book_appointment` antwoordt bij succes met
+`{ ok, startIso, endIso, summary, description, meetUrl, label, icsText }`.
+Gebruik `label` in wat je zegt en `icsText` voor `show_appointment`.
+
 ### De vorm van `report`
 
 ```json
@@ -253,9 +297,16 @@ worden gedaan en ligt bij de eigenaar.
    Supabase-project. Zonder deze tabellen antwoordt `/api/lava/session` `503`.
    *(Open sinds taak 5.)*
 2. **Zet de omgevingsvariabelen uit §7** in Vercel.
-3. **Maak de agent aan** met de instellingen uit §1–§6 en zet het id in
+3. **Vul de Turnstile-sleutel in.** Maak een Turnstile-widget aan bij
+   Cloudflare voor `mnrv.nl`, zet de **site key** in de meta-tag
+   `<meta name="turnstile-site-key" content="">` in `index.html` én in
+   `assets/mnrv.html`, en de **secret key** in `TURNSTILE_SECRET_KEY`.
+   Zonder dit antwoordt `/api/lava/session` `403 bot_check_failed` voor
+   iedereen en begint er nooit een gesprek. De sitesleutel is openbaar; dat
+   hoort zo.
+4. **Maak de agent aan** met de instellingen uit §1–§6 en zet het id in
    `LAVA_AGENT_ID`.
-4. **Voer stap 3 en 4 van de taak uit** — zie de checklist hieronder.
+5. **Voer stap 3 en 4 van de taak uit** — zie de checklist hieronder.
 
 ### Waarom niet hier gedaan
 
@@ -302,6 +353,23 @@ handmatige ronde:
 | De microfoonvraag komt pas na een echte tik | ☐ |
 
 ---
+
+### Wat een onafhankelijke review nog vond
+
+Na het bouwen is de hele tak nagelezen. Drie bevindingen waren fataal en zijn
+opgelost voordat dit document af was:
+
+- Er stond nergens een Turnstile-widget, dus elke bezoeker kreeg `403`. Nu
+  haalt de client per poging een vers token op — zie stap 3 hierboven.
+- De post-call webhook las de ruwe body uit een stream die Vercel al had
+  leeggemaakt, en wees daardoor élke echte levering af met `401`.
+- Het verslag claimde het gesprek vóórdat de uitnodiging werd gebouwd, dus een
+  onbruikbare `startIso` liet de claim achter zonder dat iemand iets hoorde.
+
+Verder zijn opgelost: de sluitknop beëindigde het gesprek niet (de microfoon
+bleef aan), het afspraakvenster viel achter de overlay, `?lava=1` startte een
+gesprek zonder klik, de uitbraak uit de sandbox kon niet werken, en de
+bezoekersmail verstuurde een ongecontroleerd adres en een ongecontroleerde link.
 
 ## 9. Openstaande keuzes van de eigenaar
 
