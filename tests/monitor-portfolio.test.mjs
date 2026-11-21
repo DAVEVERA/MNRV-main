@@ -68,7 +68,7 @@ test('all monitor projects have local previews and live destinations', async () 
     await access(new URL(`../assets/${preview}`, import.meta.url));
   }
 
-  await access(new URL('../assets/img/portfolio/monitor-wall.png', import.meta.url));
+  await access(new URL('../assets/img/portfolio/monitor-wall.webp', import.meta.url));
 });
 
 test('monitor interaction lazy-loads one iframe and supports every close route', () => {

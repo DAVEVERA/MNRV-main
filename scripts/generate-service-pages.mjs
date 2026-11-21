@@ -378,7 +378,7 @@ function navigation() {
   <a class="skip-link" href="#main-content">Ga naar de hoofdinhoud</a>
   <nav class="site-nav" aria-label="Hoofdnavigatie">
     <a class="site-nav__logo" href="/assets/mnrv.html" aria-label="MNRV moderne site">
-      <img src="/assets/img/MNRV_LOGO.png" alt="MNRV" width="58" height="58">
+      <img src="/assets/img/MNRV_LOGO-320.png" alt="MNRV" width="58" height="58">
     </a>
     <div class="site-nav__links">
       <a href="/diensten/">Diensten</a>
@@ -398,7 +398,7 @@ function footer() {
   <footer class="site-footer">
     <div class="site-footer__inner">
       <div class="footer-brand">
-        <img src="/assets/img/MNRV_LOGO.png" alt="MNRV" width="76" height="76" loading="lazy">
+        <img src="/assets/img/MNRV_LOGO-320.png" alt="MNRV" width="76" height="76" loading="lazy">
         <p>MNRV verbindt strategie, operations, design, development en AI. We bouwen websites, commerceplatformen, software-integraties en AI-systemen die aantoonbaar werk uit handen nemen.</p>
       </div>
       <nav class="footer-column" aria-label="Diensten">
@@ -463,7 +463,10 @@ function documentHead({ title, description, canonical, schema }) {
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">
   <meta name="twitter:image" content="${siteUrl}/assets/img/MNRV_LOGO.png">
-  <link rel="icon" type="image/png" href="/assets/img/MNRV_LOGO.png">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicon-16.png">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&amp;family=Roboto:wght@300;400;500&amp;display=swap" rel="stylesheet">
