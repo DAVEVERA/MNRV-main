@@ -215,6 +215,12 @@
       <span class="icon-label">FreeCell</span>
     </a>
 
+    <!-- Freedoom -->
+    <div class="desktop-icon" tabindex="0" data-window="doom-window">
+      <img class="icon-img" src="assets/icons/w98_joystick.ico" alt="Freedoom" draggable="false">
+      <span class="icon-label">Freedoom</span>
+    </div>
+
     <!-- Mijn account -->
     <div class="desktop-icon" tabindex="0" data-window="nedry-window">
       <img class="icon-img" src="assets/icons/w98_ConsolePrompt_32x32_4.png" alt="Mijn account" draggable="false">
@@ -441,6 +447,35 @@
     </div>
   </div>
 
+  <!-- ============================================
+       FREEDOOM WINDOW
+       ============================================ -->
+  <div id="doom-window" class="win-window hidden doom-window" aria-label="Freedoom">
+    <div class="win-titlebar">
+      <img class="win-titlebar-icon" src="assets/icons/w98_joystick.ico" alt="" draggable="false">
+      <span class="win-titlebar-title">Freedoom - Chocolate Doom</span>
+      <div class="win-titlebar-buttons">
+        <button type="button" class="win-titlebar-btn min-btn" aria-label="Minimaliseren" title="Minimaliseren">_</button>
+        <button type="button" class="win-titlebar-btn max-btn" aria-label="Maximaliseren" title="Maximaliseren">&#9633;</button>
+        <button type="button" class="win-titlebar-btn close-btn" aria-label="Sluiten" title="Sluiten">X</button>
+      </div>
+    </div>
+    <div class="win-body doom-window-body">
+      <iframe
+        class="doom-frame"
+        src="about:blank"
+        data-window-src="components/doom/player/index.html"
+        data-reset-on-close="true"
+        title="Freedoom"
+        allow="autoplay; fullscreen"
+      ></iframe>
+    </div>
+    <div class="win-statusbar">
+      <span class="win-statusbar-section">Chocolate Doom WebAssembly</span>
+      <span class="win-statusbar-section">Freedoom</span>
+    </div>
+  </div>
+
 
 </div><!-- /.desktop -->
 
@@ -557,6 +592,10 @@
     <div class="start-menu-item" id="start-mediaplayer">
       <img src="assets/icons/w98_MediaPlayer_16x16_4.png" alt="" draggable="false">
       <span>Media Player</span>
+    </div>
+    <div class="start-menu-item" data-open-window="doom-window" tabindex="0">
+      <img src="assets/icons/w98_joystick.ico" alt="" draggable="false">
+      <span>Freedoom</span>
     </div>
     <div class="start-menu-separator"></div>
     <a class="start-menu-item d-flex gap-8" href="https://www.linkedin.com/in/davevera/" target="_blank" rel="noopener">

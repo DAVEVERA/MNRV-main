@@ -614,7 +614,8 @@
       mspaint: 'paint-window', 'mspaint.exe': 'paint-window', paint: 'paint-window',
       calc: 'calculator-window', 'calc.exe': 'calculator-window',
       command: 'command-window', 'command.com': 'command-window', cmd: 'command-window',
-      winver: 'winver-window', mnrv: 'lava-window', explorer: 'computer-window'
+      winver: 'winver-window', mnrv: 'lava-window', explorer: 'computer-window',
+      doom: 'doom-window', 'doom.exe': 'doom-window', freedoom: 'doom-window'
     };
     form.addEventListener('submit', function(event) {
       event.preventDefault();

@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const [index, main, apps, appCss, mainCss, player] = await Promise.all([
+const [index, main, apps, appCss, mainCss, player, doomPlayer] = await Promise.all([
   readFile(new URL('../index.html', import.meta.url), 'utf8'),
   readFile(new URL('../js/main.js', import.meta.url), 'utf8'),
   readFile(new URL('../js/retro-apps.js', import.meta.url), 'utf8'),
   readFile(new URL('../css/retro-apps.css', import.meta.url), 'utf8'),
   readFile(new URL('../css/style.css', import.meta.url), 'utf8'),
   readFile(new URL('../mediaplayer.html', import.meta.url), 'utf8'),
+  readFile(new URL('../components/doom/player/index.html', import.meta.url), 'utf8'),
 ]);
 
 test('retro route loads the interactive desktop application layer', () => {
@@ -63,4 +64,17 @@ test('start menu social links point at real destinations', () => {
   assert.match(index, /href="https:\/\/wa\.me\/31682456410"/);
   assert.doesNotMatch(index, /href="#"[^>]*>LinkedIn/);
   assert.doesNotMatch(index, /href="#"[^>]*>WhatsApp/);
+});
+
+test('Freedoom is installed as a managed retro desktop application', () => {
+  assert.match(index, /data-window="doom-window"/);
+  assert.match(index, /id="doom-window"/);
+  assert.match(index, /data-window-src="components\/doom\/player\/index\.html"/);
+  assert.match(index, /data-reset-on-close="true"/);
+  assert.match(main, /iframe\[data-window-src\]/);
+  assert.match(main, /data-reset-on-close/);
+  assert.match(apps, /doom\.exe.*doom-window.*freedoom/s);
+  assert.match(doomPlayer, /websockets-doom\.js/);
+  assert.match(doomPlayer, /\.\.\/freedoom1\.wad/);
+  assert.match(doomPlayer, /doom-wasm-pwa\/tree\/a77edfd8bbc7/);
 });

@@ -98,6 +98,28 @@ test('closing Media Player stops its iframe audio', async ({ page }) => {
   expect(await frame.locator('#audio').evaluate((audio) => audio.currentTime)).toBe(0);
 });
 
+test('Freedoom loads in its retro window and is destroyed on close', async ({ page }) => {
+  test.setTimeout(90_000);
+  await openRetro(page);
+  await openDesktopWindow(page, 'Freedoom');
+  const win = page.locator('#doom-window');
+  const frameElement = win.locator('iframe');
+  await expect(win).toBeVisible();
+  await expect(frameElement).toHaveAttribute('src', 'components/doom/player/index.html');
+
+  const game = page.frameLocator('#doom-window iframe');
+  await expect(game.locator('#bootBtn')).toBeEnabled({ timeout: 60_000 });
+  await expect(game.locator('#bootBtn')).toHaveText('KLIK OM TE STARTEN');
+  const startBox = await game.locator('#bootBtn').boundingBox();
+  await page.mouse.click(startBox.x + startBox.width / 2, startBox.y + startBox.height / 2);
+  await expect(game.locator('#boot')).toBeHidden({ timeout: 30_000 });
+  await expect(game.locator('#canvas')).toBeVisible();
+
+  await win.locator('.close-btn').click();
+  await expect(win).toBeHidden();
+  await expect(frameElement).toHaveAttribute('src', 'about:blank');
+});
+
 test('mobile can restore a minimized window and maximize it', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openRetro(page);

@@ -492,6 +492,11 @@
   function showWindow(id) {
     const win = document.getElementById(id);
     if (!win) return;
+    win.querySelectorAll('iframe[data-window-src]').forEach(function(frame) {
+      if (frame.dataset.windowLoaded === 'true') return;
+      frame.src = frame.dataset.windowSrc;
+      frame.dataset.windowLoaded = 'true';
+    });
     win.classList.remove('hidden');
     // Play restore animation if it was minimized
     if (win._wasMinimized) {
@@ -551,8 +556,13 @@
       }
     });
     win.querySelectorAll('iframe').forEach(function(frame) {
-      if (!frame.contentWindow) return;
-      frame.contentWindow.postMessage({ type: 'mnrv-media-stop' }, window.location.origin);
+      if (frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: 'mnrv-media-stop' }, window.location.origin);
+      }
+      if (frame.hasAttribute('data-reset-on-close')) {
+        frame.src = 'about:blank';
+        delete frame.dataset.windowLoaded;
+      }
     });
   }
 
