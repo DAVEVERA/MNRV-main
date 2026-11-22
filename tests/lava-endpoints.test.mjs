@@ -511,7 +511,7 @@ async function runSession({ req = fakeReq(), turnstileOk = true, count = 0, mint
       return new Response(null, { status: 201 });
     }
     if (u.includes('api.elevenlabs.io')) {
-      return mint ? mint(u, init) : json({ token: 'conv-token-1' });
+      return mint ? mint(u, init) : json({ token: 'conv-token-1', conversation_id: 'conv-1' });
     }
     throw new Error(`unexpected fetch ${u}`);
   };
@@ -617,7 +617,7 @@ test('session mints a token from /v1/convai/conversation/token with the api key 
       'https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=agent_abc',
     );
     assert.equal(call.init.method, 'GET');
-    assert.equal(call.init.headers['xi-api-key'], 'xi-secret-key-123');
+    assert.equal(new Headers(call.init.headers).get('xi-api-key'), 'xi-secret-key-123');
     const order = r.calls.map((c) =>
       c.url.includes('cloudflare') ? 'turnstile' : c.url.includes('elevenlabs') ? 'mint' : c.init.method,
     );

@@ -159,7 +159,7 @@ const PANEL_HTML = `
     <div class="win-titlebar">
       <span class="win-titlebar-title">LAVA.exe</span>
       <div class="win-titlebar-buttons">
-        <button type="button" class="win-titlebar-btn close-btn" id="lava-overlay-close" title="Sluiten">X</button>
+        <button type="button" class="win-titlebar-btn close-btn" id="lava-overlay-close" aria-label="Sluiten" title="Sluiten">X</button>
       </div>
     </div>
     <div class="win-body lava-window-body">
@@ -178,7 +178,7 @@ const PANEL_HTML = `
     <div class="win-titlebar">
       <span class="win-titlebar-title">Wat LAVA begrijpt</span>
       <div class="win-titlebar-buttons">
-        <button type="button" class="win-titlebar-btn close-btn" title="Sluiten">X</button>
+        <button type="button" class="win-titlebar-btn close-btn" aria-label="Sluiten" title="Sluiten">X</button>
       </div>
     </div>
     <div class="win-body lava-notes-body">
@@ -195,7 +195,7 @@ const PANEL_HTML = `
     <div class="win-titlebar">
       <span class="win-titlebar-title">Afspraak</span>
       <div class="win-titlebar-buttons">
-        <button type="button" class="win-titlebar-btn close-btn" title="Sluiten">X</button>
+        <button type="button" class="win-titlebar-btn close-btn" aria-label="Sluiten" title="Sluiten">X</button>
       </div>
     </div>
     <div class="win-body lava-appointment-body">

@@ -10,12 +10,14 @@ const indexPath = new URL('../index.html', import.meta.url);
 const lavaCssPath = new URL('../css/lava.css', import.meta.url);
 const stylePath = new URL('../css/style.css', import.meta.url);
 const clientPath = new URL('../js/lava/index.mjs', import.meta.url);
+const serverSdkPath = new URL('../api/lava/_lib/elevenlabs.mjs', import.meta.url);
 
-const [indexHtml, lavaCss, styleCss, clientJs] = await Promise.all([
+const [indexHtml, lavaCss, styleCss, clientJs, serverSdk] = await Promise.all([
   readFile(indexPath, 'utf8'),
   readFile(lavaCssPath, 'utf8'),
   readFile(stylePath, 'utf8'),
   readFile(clientPath, 'utf8'),
+  readFile(serverSdkPath, 'utf8'),
 ]);
 
 /** The markup of one element by id, up to a generous bound. */
@@ -71,6 +73,15 @@ test('the three LAVA windows carry the win-window chrome so main.js can drive th
   }
 });
 
+test('the standalone LAVA overlay preserves the supplied Windows 95 window metrics', () => {
+  assert.match(lavaCss, /\.lava-overlay \.win-window[\s\S]*?padding:\s*3px;/);
+  assert.match(lavaCss, /\.lava-overlay \.win-window[\s\S]*?inset -2px -2px 0 var\(--win-btn-shadow/);
+  assert.match(lavaCss, /\.lava-overlay \.win-titlebar[\s\S]*?height:\s*18px;/);
+  assert.match(lavaCss, /\.lava-overlay \.win-titlebar-btn[\s\S]*?width:\s*16px;[\s\S]*?height:\s*14px;/);
+  assert.match(lavaCss, /\.lava-overlay \.win-titlebar-btn\.close-btn::before[\s\S]*?box-shadow:/);
+  assert.match(clientJs, /class="win-titlebar-btn close-btn"[^>]*aria-label="Sluiten"/);
+});
+
 test('the LAVA window body is Dutch and carries the documented controls', () => {
   const block = blockFor(indexHtml, 'lava-window');
   for (const label of ['Pauzeer', 'Beëindig gesprek']) {
@@ -94,6 +105,13 @@ test('the browser client pins an exact ElevenLabs SDK version', () => {
   const url = clientJs.match(/https:\/\/cdn\.jsdelivr\.net\/npm\/@elevenlabs\/client@([^/'"]+)/);
   assert.ok(url, 'the SDK must come from a pinned jsDelivr ESM URL');
   assert.match(url[1], /^\d+\.\d+\.\d+$/, 'the version must be exact, never a tag or a range');
+});
+
+test('the server uses the official ElevenLabs SDK without exposing the workspace key', () => {
+  assert.match(serverSdk, /from '@elevenlabs\/elevenlabs-js'/);
+  assert.match(serverSdk, /conversationalAi\.conversations\.getWebrtcToken/);
+  assert.match(serverSdk, /process\.env\.ELEVENLABS_API_KEY/);
+  assert.doesNotMatch(serverSdk, /apiKey:\s*process\.env\.ELEVENLABS_API_KEY/);
 });
 
 test('the browser client registers both documented client tools', () => {

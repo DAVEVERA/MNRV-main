@@ -6,10 +6,10 @@
 
 import { createHash } from 'node:crypto';
 
+import { mintConversationToken } from './_lib/elevenlabs.mjs';
 import { verifyTurnstile } from './_lib/guards.mjs';
 import { countSessionsToday, createStoreClient, recordSessionGrant } from './_lib/store.mjs';
 
-const TOKEN_URL = 'https://api.elevenlabs.io/v1/convai/conversation/token';
 const DEFAULT_DAILY_LIMIT = 20;
 
 function sendJson(res, statusCode, payload) {
@@ -60,24 +60,6 @@ function dailyLimit() {
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_DAILY_LIMIT;
 }
 
-// Returns the token string, or null for any failure. Nothing from the upstream
-// response is passed on: it could echo the key back.
-async function mintToken(agentId) {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
-  if (!apiKey || !agentId) return null;
-  try {
-    const res = await fetch(`${TOKEN_URL}?agent_id=${encodeURIComponent(agentId)}`, {
-      method: 'GET',
-      headers: { 'xi-api-key': apiKey },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return typeof data?.token === 'string' && data.token !== '' ? data.token : null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -104,7 +86,7 @@ export default async function handler(req, res) {
   }
 
   const agentId = process.env.LAVA_AGENT_ID;
-  const token = await mintToken(agentId);
+  const token = await mintConversationToken(agentId);
   if (!token) {
     console.error('lava session: could not mint a conversation token');
     return sendJson(res, 502, { error: 'token_unavailable' });

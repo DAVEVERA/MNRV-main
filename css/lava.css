@@ -272,38 +272,123 @@
 
 .lava-overlay .win-window {
   background: var(--win-chrome, #c0c0c0);
-  border-top: 2px solid var(--win-btn-highlight, #ffffff);
-  border-left: 2px solid var(--win-btn-highlight, #ffffff);
-  border-right: 2px solid var(--win-btn-dark, #000000);
-  border-bottom: 2px solid var(--win-btn-dark, #000000);
-  box-shadow: inset -1px -1px 0 var(--win-btn-shadow, #808080);
+  border: 0;
+  box-shadow:
+    inset -1px -1px 0 var(--win-btn-dark, #000000),
+    inset 1px 1px 0 #dfdfdf,
+    inset -2px -2px 0 var(--win-btn-shadow, #808080),
+    inset 2px 2px 0 var(--win-btn-highlight, #ffffff);
+  padding: 3px;
   color: var(--win-text, #000000);
-  font-family: var(--font-main, "MS Sans Serif", Tahoma, sans-serif);
-  font-size: 12px;
+  font-family: var(--font-main, "MNRV MS Sans Serif", "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Geneva, sans-serif);
+  font-size: 11px;
 }
 
 .lava-overlay .win-titlebar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 2px;
-  padding: 3px 4px;
+  box-sizing: border-box;
+  height: 18px;
+  margin: 0;
+  padding: 2px 2px 2px 3px;
   background: var(--win-titlebar, #000080);
   color: var(--win-titlebar-text, #ffffff);
+  font-size: 11px;
   font-weight: bold;
 }
 
 .lava-overlay .win-titlebar-title {
-  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lava-overlay .win-titlebar-buttons {
   display: flex;
+  align-items: center;
   gap: 2px;
+  height: 14px;
+  margin-left: 4px;
 }
 
-.lava-overlay .win-titlebar-btn,
+.lava-overlay .win-titlebar-btn {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 16px;
+  min-width: 16px;
+  height: 14px;
+  padding: 0;
+  background: var(--win-btn-face, #c0c0c0);
+  border: 1px solid;
+  border-color:
+    var(--win-btn-highlight, #ffffff)
+    var(--win-btn-dark, #000000)
+    var(--win-btn-dark, #000000)
+    var(--win-btn-highlight, #ffffff);
+  box-shadow:
+    inset -1px -1px 0 var(--win-btn-shadow, #808080),
+    inset 1px 1px 0 #dfdfdf;
+  color: transparent;
+  font-family: var(--font-main, "MS Sans Serif", Tahoma, sans-serif);
+  font-size: 8px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lava-overlay .win-titlebar-btn::before,
+.lava-overlay .win-titlebar-btn::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  display: block;
+  width: 1px;
+  height: 1px;
+  background: #000000;
+  pointer-events: none;
+}
+
+.lava-overlay .win-titlebar-btn.close-btn::before {
+  left: 4px;
+  box-shadow:
+    1px 1px #000000,
+    2px 2px #000000,
+    3px 3px #000000,
+    4px 4px #000000,
+    5px 5px #000000,
+    6px 6px #000000;
+}
+
+.lava-overlay .win-titlebar-btn.close-btn::after {
+  left: 10px;
+  box-shadow:
+    -1px 1px #000000,
+    -2px 2px #000000,
+    -3px 3px #000000,
+    -4px 4px #000000,
+    -5px 5px #000000,
+    -6px 6px #000000;
+}
+
+.lava-overlay .win-titlebar-btn:active {
+  border-color:
+    var(--win-btn-dark, #000000)
+    var(--win-btn-highlight, #ffffff)
+    var(--win-btn-highlight, #ffffff)
+    var(--win-btn-dark, #000000);
+  box-shadow: inset 1px 1px 0 var(--win-btn-shadow, #808080);
+}
+
+.lava-overlay .win-titlebar-btn:active::before,
+.lava-overlay .win-titlebar-btn:active::after {
+  translate: 1px 1px;
+}
+
 .lava-overlay .win-btn {
   min-width: 20px;
   padding: 2px 8px;
@@ -319,7 +404,6 @@
   cursor: pointer;
 }
 
-.lava-overlay .win-titlebar-btn:active,
 .lava-overlay .win-btn:active {
   border-top-color: var(--win-btn-dark, #000000);
   border-left-color: var(--win-btn-dark, #000000);
@@ -328,5 +412,5 @@
 }
 
 .lava-overlay .win-body {
-  margin: 2px;
+  margin: 0;
 }

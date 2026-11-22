@@ -60,6 +60,22 @@ test('title bars and dialog controls match Windows 95 geometry and behavior', as
   await expect(run.locator('.win-context-help')).toHaveCount(0);
 });
 
+test('modern-route LAVA overlay uses the same Windows 95 frame and close control', async ({ page }) => {
+  await page.goto('/assets/mnrv.html?lava=1');
+  const overlay = page.locator('#lava-overlay');
+  const win = overlay.locator('#lava-window');
+  const titlebar = win.locator('.win-titlebar');
+  const close = win.locator('.close-btn');
+
+  await expect(overlay).toHaveClass(/is-open/);
+  await expect(win).toBeVisible();
+  expect(await titlebar.evaluate((element) => element.getBoundingClientRect().height)).toBe(18);
+  expect(await close.evaluate((element) => ({ width: element.offsetWidth, height: element.offsetHeight }))).toEqual({ width: 16, height: 14 });
+  await expect(close).toHaveAttribute('aria-label', 'Sluiten');
+  await close.click();
+  await expect(overlay).not.toHaveClass(/is-open/);
+});
+
 test('taskbar buttons include the app icon', async ({ page }) => {
   await openRetro(page);
   await openDesktopWindow(page, 'Paint');

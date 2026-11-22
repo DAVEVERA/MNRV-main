@@ -1,10 +1,12 @@
 {
   "scripts": {
     "build:services": "node scripts/generate-service-pages.mjs",
+    "configure:lava": "node --env-file=.env.local scripts/configure-lava-agent.mjs",
     "test": "node --test",
     "test:retro-browser": "playwright test browser-tests/retro-window-manager.spec.mjs --config=playwright.config.mjs"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.79.0",
     "@vercel/speed-insights": "^2.0.0"
   },
   "devDependencies": {

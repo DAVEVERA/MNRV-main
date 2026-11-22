@@ -190,3 +190,5 @@ assets/windows-95-ui-kit"
 
 # Superpowers scratch
 .superpowers/
+# Local secrets written by `elevenlabs onboard`
+/.env.local
